@@ -50,6 +50,21 @@ jobs:
       - name: Run Ameba linter
         uses: crystal-ameba/github-action@master
         continue-on-error: true
+  build-snapcraft:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [amd64]
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v6
+      - name: Build snapcraft package
+        uses: canonical/action-build@v1
+        id: build
   build-docker:
     strategy:
       fail-fast: false

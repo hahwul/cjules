@@ -1,0 +1,48 @@
+name: cjules
+base: core24
+version: 0.1.0
+summary: Crystal CLI for the Jules API with multi-account support.
+description: |
+  cjules is a focused, scriptable command-line interface for the Jules
+  API written in Crystal. It complements the official tooling with
+  power-user features: multiple API key/account profiles, bulk delete
+  by filter, watch/tail mode for sessions, gitPatch extraction with
+  --apply, markdown activity export, and an interactive picker.
+
+grade: stable
+confinement: strict
+license: MIT
+
+apps:
+  cjules:
+    command: cjules
+    plugs:
+      - home
+      - network
+      - network-bind
+
+parts:
+  cjules:
+    source: ./
+    plugin: nil
+    override-build: |
+      curl -fsSL https://crystal-lang.org/install.sh | bash
+      shards install --production
+      shards build --release --no-debug --production
+      cp ./bin/cjules $CRAFT_PART_INSTALL/
+    build-packages:
+      - git
+      - curl
+      - pkg-config
+      - libssl-dev
+      - libxml2-dev
+      - libz-dev
+      - libyaml-dev
+      - libpcre2-dev
+      - libevent-dev
+      - libgmp-dev
+    stage-packages:
+      - libxml2
+      - zlib1g
+      - libyaml-0-2
+      - ca-certificates
