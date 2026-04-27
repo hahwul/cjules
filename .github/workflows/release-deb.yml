@@ -1,0 +1,89 @@
+---
+name: Build and Release .deb Package
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g., 0.1.0)"
+        required: true
+        type: string
+      upload_to_release:
+        description: "Upload .deb to GitHub Release (requires existing tag)"
+        required: false
+        type: boolean
+        default: false
+  workflow_run:
+    workflows: ["Build and Release Binaries"]
+    types: [completed]
+permissions:
+  contents: write
+jobs:
+  build-deb:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'release')
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', github.event.inputs.version) || github.event.workflow_run.head_branch }}
+      - name: Get Version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW_VERSION="${{ github.event.inputs.version }}"
+          else
+            RAW_VERSION="${{ github.event.workflow_run.head_branch }}"
+          fi
+          VERSION="${RAW_VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Resolved version: $VERSION"
+      - name: Download prebuilt binary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARCH_NAME=${{ matrix.arch == 'amd64' && 'x86_64' || 'arm64' }}
+          gh release download "v${{ env.VERSION }}" \
+            --pattern "cjules-v${{ env.VERSION }}-linux-${ARCH_NAME}" \
+            --output cjules
+          chmod +x cjules
+      - name: Create Debian Package Structure
+        run: |
+          mkdir -p cjules_${{ env.VERSION }}_${{ matrix.arch }}/DEBIAN
+          mkdir -p cjules_${{ env.VERSION }}_${{ matrix.arch }}/usr/bin
+          mkdir -p cjules_${{ env.VERSION }}_${{ matrix.arch }}/usr/share/doc/cjules
+          cp cjules cjules_${{ env.VERSION }}_${{ matrix.arch }}/usr/bin/
+          cp README.md cjules_${{ env.VERSION }}_${{ matrix.arch }}/usr/share/doc/cjules/
+          cp LICENSE cjules_${{ env.VERSION }}_${{ matrix.arch }}/usr/share/doc/cjules/
+      - name: Create DEBIAN/control file
+        run: |
+          cat > cjules_${{ env.VERSION }}_${{ matrix.arch }}/DEBIAN/control << EOF
+          Package: cjules
+          Version: ${{ env.VERSION }}
+          Architecture: ${{ matrix.arch }}
+          Maintainer: hahwul <hahwul@gmail.com>
+          Description: Crystal CLI for the Jules API with multi-account support.
+          Depends: libc6 (>= 2.17)
+          EOF
+      - name: Build .deb Package
+        run: |
+          dpkg-deb --build cjules_${{ env.VERSION }}_${{ matrix.arch }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: cjules_${{ env.VERSION }}_${{ matrix.arch }}.deb
+          path: cjules_${{ env.VERSION }}_${{ matrix.arch }}.deb
+      - name: Upload .deb to Release
+        if: github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.upload_to_release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          files: |
+            cjules_${{ env.VERSION }}_${{ matrix.arch }}.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

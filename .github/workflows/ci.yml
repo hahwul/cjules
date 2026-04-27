@@ -7,6 +7,7 @@ on:
       - .github/workflows/ci.yml
       - shard.yml
       - shard.lock
+      - docker/Dockerfile
       - "**/*.cr"
   push:
     branches: [main]
@@ -49,3 +50,34 @@ jobs:
       - name: Run Ameba linter
         uses: crystal-ameba/github-action@master
         continue-on-error: true
+  build-docker:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: linux/amd64
+            runner: ubuntu-latest
+          - arch: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: ${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
