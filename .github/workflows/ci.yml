@@ -1,0 +1,51 @@
+---
+name: CI
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ci.yml
+      - shard.yml
+      - shard.lock
+      - "**/*.cr"
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crystal-version: [1.20.0, latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal-version }}
+      - name: Install dependencies
+        run: shards install
+      - name: Build
+        run: shards build
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        crystal-version: [1.20.0]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal-version }}
+      - name: Install dependencies
+        run: shards install
+      - name: Run specs
+        run: crystal spec --order=random
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run Ameba linter
+        uses: crystal-ameba/github-action@master
+        continue-on-error: true
