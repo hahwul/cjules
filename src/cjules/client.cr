@@ -29,30 +29,36 @@ module Cjules
       end
     end
 
+    CONNECT_TIMEOUT = 10.seconds
+    READ_TIMEOUT    = 30.seconds
+
     def initialize(@config : Config)
     end
 
-    private def build_uri(path : String, query : Hash(String, String)? = nil) : URI
-      uri = URI.parse(@config.api_base)
-      uri.path = path
-      if query && !query.empty?
-        params = URI::Params.build do |form|
-          query.each { |k, v| form.add(k, v) }
-        end
-        uri.query = params
+    private def full_path(path : String, query : Hash(String, String)? = nil) : String
+      return path unless query && !query.empty?
+      params = URI::Params.build do |form|
+        query.each { |k, v| form.add(k, v) }
       end
-      uri
+      "#{path}?#{params}"
     end
 
     private def request(method : String, path : String, query : Hash(String, String)? = nil, body : String? = nil) : String
-      uri = build_uri(path, query)
+      uri = URI.parse(@config.api_base)
+      client = HTTP::Client.new(uri)
+      client.connect_timeout = CONNECT_TIMEOUT
+      client.read_timeout = READ_TIMEOUT
       headers = HTTP::Headers{
         "x-goog-api-key" => @config.require_api_key!,
         "Content-Type"   => "application/json",
         "Accept"         => "application/json",
         "User-Agent"     => "cjules/#{Cjules::VERSION}",
       }
-      response = HTTP::Client.exec(method: method, url: uri, headers: headers, body: body)
+      begin
+        response = client.exec(method: method, path: full_path(path, query), headers: headers, body: body)
+      ensure
+        client.close
+      end
       if response.status_code >= 400
         raise APIError.new(response.status_code, response.body)
       end

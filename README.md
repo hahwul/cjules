@@ -2,6 +2,11 @@
 
 # cjules
 
+[![CI](https://github.com/hahwul/cjules/actions/workflows/ci.yml/badge.svg)](https://github.com/hahwul/cjules/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/hahwul/cjules?include_prereleases&sort=semver)](https://github.com/hahwul/cjules/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Crystal](https://img.shields.io/badge/crystal-%E2%89%A5%201.20-black.svg)](https://crystal-lang.org)
+
 A focused, scriptable CLI for the [Jules](https://jules.google),
 written in Crystal. `cjules` complements the official tooling with the
 quality-of-life features power users tend to miss:
@@ -14,6 +19,10 @@ quality-of-life features power users tend to miss:
 - **Patch extraction** — `cjules patch <id> --apply` runs `git apply` with the session's gitPatch.
 - **Markdown export** — `cjules logs <id> -o md` produces a full session report.
 - **Interactive picker** — `cjules pick` (uses `fzf` if available; falls back to a numeric menu).
+
+> **Heads up:** the Jules API is currently labelled `v1alpha`. Schema and
+> behaviour can change without notice. Pin a release of cjules in scripts you
+> care about and read the [CHANGELOG](CHANGELOG.md) when upgrading.
 
 ## Install
 
