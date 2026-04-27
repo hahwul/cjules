@@ -88,7 +88,7 @@ module Cjules
         t = Table.new(["ID", "STATE", "REPO", "TITLE", "AGE"])
         list.each do |s|
           title = (s.title || s.prompt || "").gsub(/\s+/, " ")
-          title = title[0..60] if title.size > 60
+          title = Colors.truncate_display(title, 60)
           t.add_row([
             s.short_id,
             Colors.state(s.state || "-"),
@@ -106,7 +106,9 @@ module Cjules
         io.puts "#{Colors.bold("State")}   : #{Colors.state(s.state || "-")}"
         io.puts "#{Colors.bold("Title")}   : #{s.title}"
         io.puts "#{Colors.bold("Repo")}    : #{s.repo_display}"
-        io.puts "#{Colors.bold("Branch")}  : #{s.sourceContext.try(&.githubRepoContext).try(&.startingBranch)}"
+        if branch = s.sourceContext.try(&.githubRepoContext).try(&.startingBranch)
+          io.puts "#{Colors.bold("Branch")}  : #{branch}"
+        end
         io.puts "#{Colors.bold("URL")}     : #{s.url}"
         io.puts "#{Colors.bold("Created")} : #{s.createTime}"
         io.puts "#{Colors.bold("Updated")} : #{s.updateTime}"

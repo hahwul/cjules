@@ -50,7 +50,7 @@ module Cjules
           next false if state_filter && sess.state != state_filter
           if rf = repo_filter
             src = sess.sourceContext.try(&.source) || ""
-            next false unless src.includes?(rf.gsub("/", "-"))
+            next false unless src.includes?(rf)
           end
           if c = cutoff
             if t = sess.createTime

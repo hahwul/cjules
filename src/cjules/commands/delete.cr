@@ -66,7 +66,7 @@ module Cjules
             end
             if rf = repo_filter
               src = sess.sourceContext.try(&.source) || ""
-              next false unless src.includes?(rf.gsub("/", "-"))
+              next false unless src.includes?(rf)
             end
             true
           end

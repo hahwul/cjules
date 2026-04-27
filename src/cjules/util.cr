@@ -92,12 +92,14 @@ module Cjules
       end
     end
 
-    # Convert "owner/repo" to source resource name "sources/github-owner-repo".
+    # Convert "owner/repo" to the source resource name used by the Jules API.
+    # The live API uses slash-separated source IDs, e.g. "sources/github/owner/repo",
+    # rather than the hyphen form sometimes shown in API examples.
     module RepoMap
       extend self
 
       def to_source(repo : String) : String
-        "sources/github-#{repo.gsub("/", "-")}"
+        "sources/github/#{repo}"
       end
     end
   end

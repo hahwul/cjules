@@ -62,26 +62,30 @@ describe Cjules::Util::Git do
 end
 
 describe Cjules::Util::RepoMap do
-  it "maps owner/repo to source name" do
-    Cjules::Util::RepoMap.to_source("foo/bar").should eq("sources/github-foo-bar")
+  it "maps owner/repo to slash-form source name" do
+    Cjules::Util::RepoMap.to_source("foo/bar").should eq("sources/github/foo/bar")
+  end
+
+  it "preserves hyphens in repo names" do
+    Cjules::Util::RepoMap.to_source("hahwul/hwaro-examples").should eq("sources/github/hahwul/hwaro-examples")
   end
 end
 
 describe Cjules::Models::Session do
-  it "parses minimal API response" do
-    json = %({"name":"sessions/abc","id":"abc","prompt":"hi","state":"COMPLETED","createTime":"2026-04-01T12:00:00Z"})
+  it "parses minimal API response and exposes full id via short_id" do
+    json = %({"name":"sessions/18077675164109662449","id":"18077675164109662449","prompt":"hi","state":"COMPLETED","createTime":"2026-04-01T12:00:00Z"})
     s = Cjules::Models::Session.from_json(json)
-    s.id.should eq("abc")
-    s.short_id.should eq("abc")
+    s.id.should eq("18077675164109662449")
+    s.short_id.should eq("18077675164109662449")
     s.state.should eq("COMPLETED")
   end
 
-  it "computes repo display from source" do
+  it "computes repo display from slash-form source" do
     s = Cjules::Models::Session.from_json(%({
       "id":"x",
-      "sourceContext":{"source":"sources/github-acme-widgets"}
+      "sourceContext":{"source":"sources/github/hahwul/hwaro-examples"}
     }))
-    s.repo_display.should eq("acme/widgets")
+    s.repo_display.should eq("hahwul/hwaro-examples")
   end
 
   it "tolerates unknown fields" do
@@ -191,6 +195,21 @@ describe Cjules::Output::Colors do
     Cjules::Output::Colors.visible_length("\e[1;32mok\e[0m\e[2mzz\e[0m").should eq(4)
   end
 
+  it "counts CJK / fullwidth chars as 2 cells in display_width" do
+    Cjules::Output::Colors.display_width("hi").should eq(2)
+    Cjules::Output::Colors.display_width("안녕").should eq(4)
+    Cjules::Output::Colors.display_width("a한b").should eq(4)
+    Cjules::Output::Colors.display_width("\e[31m한국\e[0m").should eq(4)
+    Cjules::Output::Colors.display_width("漢字テスト").should eq(10)
+  end
+
+  it "truncate_display respects display width and adds ellipsis" do
+    Cjules::Output::Colors.truncate_display("short", 10).should eq("short")
+    Cjules::Output::Colors.truncate_display("hello world", 8).should eq("hello w…")
+    # 안녕하세요 = 10 cells; truncate to 6 -> 2 chars (4 cells) + … (1 cell) = 5 cells <= 6
+    Cjules::Output::Colors.display_width(Cjules::Output::Colors.truncate_display("안녕하세요", 6)).should be <= 6
+  end
+
   it "color-codes session states only when enabled" do
     Cjules::Output::Colors.disable!
     Cjules::Output::Colors.state("COMPLETED").should eq("COMPLETED")
@@ -261,8 +280,8 @@ describe Cjules::Models do
   end
 
   it "leaves repo_display untouched for unknown source format" do
-    s = Cjules::Models::Session.from_json(%({"id":"x","sourceContext":{"source":"sources/gitlab-foo-bar"}}))
-    s.repo_display.should eq("sources/gitlab-foo-bar")
+    s = Cjules::Models::Session.from_json(%({"id":"x","sourceContext":{"source":"sources/gitlab/foo/bar"}}))
+    s.repo_display.should eq("sources/gitlab/foo/bar")
   end
 end
 

@@ -79,15 +79,14 @@ module Cjules
       property updateTime : String?
 
       def short_id : String
-        sid = id || name.try(&.split("/").last) || "?"
-        sid[0...12]
+        id || name.try(&.split("/").last) || "?"
       end
 
       def repo_display : String
         src = sourceContext.try(&.source) || ""
-        # sources/github-OWNER-REPO  (best-effort split)
-        if m = src.match(/^sources\/github-([^-]+)-(.+)$/)
-          "#{m[1]}/#{m[2]}"
+        # API uses slash-separated source IDs: sources/github/OWNER/REPO
+        if m = src.match(/^sources\/github\/(.+)$/)
+          m[1]
         else
           src
         end
