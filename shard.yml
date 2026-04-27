@@ -1,0 +1,13 @@
+name: cjules
+version: 0.1.0
+
+authors:
+  - hahwul <hahwul@gmail.com>
+
+targets:
+  cjules:
+    main: src/main.cr
+
+crystal: '>= 1.20.0'
+
+license: MIT
