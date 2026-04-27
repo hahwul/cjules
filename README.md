@@ -1,3 +1,5 @@
+<img src="logo.webp" style="width: 120px;">
+
 # cjules
 
 A focused, scriptable CLI for the [Jules API](https://jules.google/docs/api),
