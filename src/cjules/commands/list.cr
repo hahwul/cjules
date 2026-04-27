@@ -41,9 +41,12 @@ module Cjules
 
         cutoff : Time? = nil
         if s = since
-          if span = Util::Duration.parse(s)
-            cutoff = Time.utc - span
+          span = Util::Duration.parse(s)
+          if span.nil?
+            STDERR.puts "error: invalid --since duration: #{s.inspect} (expected e.g. 30s, 5m, 2h, 7d, 1w)"
+            return 2
           end
+          cutoff = Time.utc - span
         end
 
         filtered = sessions.select do |sess|

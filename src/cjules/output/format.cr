@@ -74,8 +74,10 @@ module Cjules
           io.puts "#{Colors.bold("Name")}   : #{s.name}"
           if gh
             io.puts "#{Colors.bold("Repo")}   : #{gh.owner}/#{gh.repo}"
-            io.puts "#{Colors.bold("Default")}: #{gh.defaultBranch.try(&.displayName)}"
-            io.puts "#{Colors.bold("Private")}: #{gh.isPrivate}"
+            if d = gh.defaultBranch.try(&.displayName)
+              io.puts "#{Colors.bold("Default")}: #{d}"
+            end
+            io.puts "#{Colors.bold("Private")}: #{gh.isPrivate ? "yes" : "no"}"
             if branches = gh.branches
               io.puts "#{Colors.bold("Branches")}:"
               branches.each { |b| io.puts "  - #{b.displayName}" }
