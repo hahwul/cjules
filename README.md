@@ -2,7 +2,7 @@
 
 # cjules
 
-A focused, scriptable CLI for the [Jules API](https://jules.google/docs/api),
+A focused, scriptable CLI for the [Jules API](https://jules.google),
 written in Crystal. `cjules` complements the official tooling with the
 quality-of-life features power users tend to miss:
 
