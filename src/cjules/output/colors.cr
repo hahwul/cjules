@@ -1,36 +1,35 @@
+require "colorize"
+
 module Cjules
   module Output
     module Colors
       extend self
 
-      @@enabled : Bool = STDOUT.tty? && ENV["NO_COLOR"]?.nil?
+      # Initialize global Colorize state from TTY + NO_COLOR. Re-evaluated
+      # at module load (which happens once per process).
+      Colorize.enabled = STDOUT.tty? && ENV["NO_COLOR"]?.nil?
 
       def disable!
-        @@enabled = false
+        Colorize.enabled = false
       end
 
       def enable!
-        @@enabled = true
+        Colorize.enabled = true
       end
 
       def enabled? : Bool
-        @@enabled
+        Colorize.enabled?
       end
 
-      def wrap(s : String, code : String) : String
-        return s unless @@enabled
-        "\e[#{code}m#{s}\e[0m"
-      end
-
-      def red(s);     wrap(s, "31"); end
-      def green(s);   wrap(s, "32"); end
-      def yellow(s);  wrap(s, "33"); end
-      def blue(s);    wrap(s, "34"); end
-      def magenta(s); wrap(s, "35"); end
-      def cyan(s);    wrap(s, "36"); end
-      def gray(s);    wrap(s, "90"); end
-      def bold(s);    wrap(s, "1"); end
-      def dim(s);     wrap(s, "2"); end
+      def red(s : String);     s.colorize(:red).to_s;       end
+      def green(s : String);   s.colorize(:green).to_s;     end
+      def yellow(s : String);  s.colorize(:yellow).to_s;    end
+      def blue(s : String);    s.colorize(:blue).to_s;      end
+      def magenta(s : String); s.colorize(:magenta).to_s;   end
+      def cyan(s : String);    s.colorize(:cyan).to_s;      end
+      def gray(s : String);    s.colorize(:dark_gray).to_s; end
+      def bold(s : String);    s.colorize.mode(:bold).to_s; end
+      def dim(s : String);     s.colorize.mode(:dim).to_s;  end
 
       def state(s : String) : String
         case s
@@ -73,7 +72,7 @@ module Cjules
         return s if display_width(s) <= max
         return "" if max <= 0
         ellipsis = "…"
-        budget = max - 1 # reserve a cell for the ellipsis
+        budget = max - 1
         result = String::Builder.new
         consumed = 0
         s.gsub(ANSI_RE, "").each_char do |c|
@@ -89,7 +88,6 @@ module Cjules
       private def char_width(c : Char) : Int32
         cp = c.ord
         return 1 if cp < 0x1100
-        # East Asian Wide / Fullwidth / common wide ranges (approximation).
         if (cp >= 0x1100 && cp <= 0x115F) ||
            (cp >= 0x2E80 && cp <= 0x303E) ||
            (cp >= 0x3041 && cp <= 0x33FF) ||
