@@ -1,11 +1,16 @@
-<img src="logo.webp" style="width: 120px;">
+<div align="center">
+  <img alt="cjules Logo" src="logo.webp" width="120px;">
+  <p>Directory tag manager — put your directories on the cutting board.</p>
+</div>
 
-# cjules
-
-[![CI](https://github.com/hahwul/cjules/actions/workflows/ci.yml/badge.svg)](https://github.com/hahwul/cjules/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/hahwul/cjules?include_prereleases&sort=semver)](https://github.com/hahwul/cjules/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Crystal](https://img.shields.io/badge/crystal-%E2%89%A5%201.20-black.svg)](https://crystal-lang.org)
+<p align="center">
+<a href="https://github.com/hahwul/cjules/blob/main/CONTRIBUTING.md">
+<img src="https://img.shields.io/badge/CONTRIBUTIONS-WELCOME-000000?style=for-the-badge&labelColor=black"></a>
+<a href="https://github.com/hahwul/cjules/releases">
+<img src="https://img.shields.io/github/v/release/hahwul/cjules?style=for-the-badge&color=black&labelColor=black&logo=web"></a>
+<a href="https://crystal-lang.org">
+<img src="https://img.shields.io/badge/Crystal-000000?style=for-the-badge&logo=crystal&logoColor=white"></a>
+</p>
 
 A focused, scriptable CLI for the [Jules](https://jules.google),
 written in Crystal. `cjules` complements the official tooling with the
