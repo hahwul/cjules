@@ -73,7 +73,7 @@ cjules new --file PROMPT.md --repo hahwul/cjules --branch main --require-approva
 cjules new --no-repo "Draft release notes for v0.2.0"
 
 # Fan out N parallel sessions with the same prompt and capture the IDs
-cjules new --parallel 5 --auto-pr "Refactor the config loader" -o jsonl | jq -r .id > ids.txt
+cjules new --parallel 5 --auto-pr "Refactor the config loader" -o json | jq -r '.[].id' > ids.txt
 ```
 
 ### Watching and steering
