@@ -10,6 +10,7 @@ require "./commands/watch"
 require "./commands/message"
 require "./commands/approve"
 require "./commands/logs"
+require "./commands/activity"
 require "./commands/patch"
 require "./commands/plan"
 require "./commands/pr"
@@ -84,6 +85,7 @@ module Cjules
         when "msg", "message"      then Commands::Message.run(argv)
         when "approve"             then Commands::Approve.run(argv)
         when "logs", "log"         then Commands::Logs.run(argv)
+        when "activity"            then Commands::Activity.run(argv)
         when "patch", "diff"       then Commands::Patch.run(argv)
         when "plan"                then Commands::Plan.run(argv)
         when "pr"                  then Commands::PR.run(argv)
@@ -125,7 +127,8 @@ module Cjules
           msg <ID> <TEXT|->   Send a follow-up message
           approve <ID>        Approve a pending plan
           plan <ID>           Show the latest generated plan (--all for history)
-          logs <ID>           Export full activity log (md/json/text)
+          logs <ID>           Export full activity log (md/json/text); --bash, --save-media
+          activity <SID> <AID> Show a single activity
           patch <ID>          Print, list, or --apply gitPatch artifacts
           pr <ID>             Print PR URL (--open to launch browser)
           pick                Interactive picker (uses fzf if installed)

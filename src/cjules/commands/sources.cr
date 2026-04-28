@@ -38,15 +38,17 @@ module Cjules
 
       private def ls(args : Array(String)) : Int32
         output = "table"
+        filter : String? = nil
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules sources ls [options]"
           p.on("-o FMT", "--output=FMT", "table, json, yaml, jsonl") { |v| output = v }
+          p.on("--filter EXPR", "AIP-160 filter (e.g. 'name=sources/foo OR name=sources/bar')") { |v| filter = v }
           p.on("-h", "--help", "Show help") { puts p; exit 0 }
         end
         parser.parse(args.dup)
         cfg = Config.load
         client = Client.new(cfg)
-        list = API::Sources.list_all(client)
+        list = API::Sources.list_all(client, filter)
         Output::Format.sources(list, output)
         0
       end

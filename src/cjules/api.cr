@@ -68,11 +68,11 @@ module Cjules
         Models::ListSourcesResponse.from_json(body)
       end
 
-      def list_all(client : Client) : Array(Models::Source)
+      def list_all(client : Client, filter : String? = nil) : Array(Models::Source)
         result = [] of Models::Source
         token : String? = nil
         loop do
-          page = list_page(client, 100, token)
+          page = list_page(client, 100, token, filter)
           if items = page.sources
             items.each { |s| result << s }
           end
@@ -112,6 +112,11 @@ module Cjules
           break if token.nil? || token.empty?
         end
         result
+      end
+
+      def get(client : Client, session_id : String, activity_id : String) : Models::Activity
+        body = client.get("/v1alpha/sessions/#{session_id}/activities/#{activity_id}")
+        Models::Activity.from_json(body)
       end
     end
   end

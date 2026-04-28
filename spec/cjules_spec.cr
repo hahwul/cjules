@@ -154,6 +154,16 @@ describe Cjules::Models::Activity do
     steps.map(&.title).should eq(["first", "second"])
     steps[1].description.should eq("do that")
   end
+
+  it "round-trips a media artifact for save-media decoding" do
+    # Just verify the model carries mimeType + base64 data; decoding is exercised
+    # by the logs command at runtime.
+    json = %({"id":"a","artifacts":[{"media":{"mimeType":"image/png","data":"aGVsbG8="}}]})
+    a = Cjules::Models::Activity.from_json(json)
+    med = a.artifacts.not_nil![0].media.not_nil!
+    med.mimeType.should eq("image/png")
+    med.data.should eq("aGVsbG8=")
+  end
 end
 
 describe Cjules::Config do

@@ -1,4 +1,5 @@
 require "option_parser"
+require "base64"
 require "json"
 require "../config"
 require "../client"
@@ -12,10 +13,14 @@ module Cjules
 
       def run(args : Array(String)) : Int32
         output = "md"
+        bash_only = false
+        save_media : String? = nil
         positional = [] of String
         parser = OptionParser.new do |p|
-          p.banner = "Usage: cjules logs <ID> [-o md|json|text]"
+          p.banner = "Usage: cjules logs <ID> [-o md|json|text] [--bash] [--save-media DIR]"
           p.on("-o FMT", "--output=FMT", "Output: md, json, text") { |v| output = v }
+          p.on("--bash", "Print bashOutput artifacts only (command/output/exit)") { bash_only = true }
+          p.on("--save-media DIR", "Decode media artifacts and save into DIR") { |v| save_media = v }
           p.on("-h", "--help", "Show help") { puts p; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
@@ -32,6 +37,16 @@ module Cjules
         client = Client.new(cfg)
         session = API::Sessions.get(client, sid)
         activities = API::Activities.list_all(client, sid)
+
+        if dir = save_media
+          n = save_media_artifacts(activities, dir)
+          STDERR.puts "saved #{n} media artifact(s) to #{dir}"
+        end
+
+        if bash_only
+          render_bash(activities)
+          return 0
+        end
 
         case output
         when "json"
@@ -55,6 +70,67 @@ module Cjules
           render_md(session, activities)
         end
         0
+      end
+
+      private def render_bash(activities : Array(Models::Activity))
+        any = false
+        activities.each do |a|
+          if arts = a.artifacts
+            arts.each do |art|
+              if bo = art.bashOutput
+                any = true
+                puts "$ #{bo.command}"
+                if out = bo.output
+                  out.lines.each { |l| puts l.chomp }
+                end
+                puts "[exit #{bo.exitCode}]"
+                puts ""
+              end
+            end
+          end
+        end
+        STDERR.puts "no bashOutput artifacts found" unless any
+      end
+
+      private def save_media_artifacts(activities : Array(Models::Activity), dir : String) : Int32
+        Dir.mkdir_p(dir)
+        seq = 0
+        activities.each do |a|
+          if arts = a.artifacts
+            arts.each do |art|
+              if med = art.media
+                data = med.data
+                next unless data && !data.empty?
+                seq += 1
+                ext = ext_for(med.mimeType)
+                fname = "%03d.%s" % [seq, ext]
+                path = File.join(dir, fname)
+                File.write(path, Base64.decode(data))
+              end
+            end
+          end
+        end
+        seq
+      end
+
+      private def ext_for(mime : String?) : String
+        case mime
+        when "image/png"      then "png"
+        when "image/jpeg"     then "jpg"
+        when "image/gif"      then "gif"
+        when "image/webp"     then "webp"
+        when "image/svg+xml"  then "svg"
+        when "video/mp4"      then "mp4"
+        when "audio/mpeg"     then "mp3"
+        when "application/pdf" then "pdf"
+        when "text/plain"     then "txt"
+        else
+          if mime && (slash = mime.index("/"))
+            mime[(slash + 1)..].gsub(/[^A-Za-z0-9]+/, "")
+          else
+            "bin"
+          end
+        end
       end
 
       private def render_md(s : Models::Session, activities : Array(Models::Activity))

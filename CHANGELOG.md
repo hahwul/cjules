@@ -10,8 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Typed Activity events** — `planGenerated`, `planApproved`, `userMessaged`, `agentMessaged`, `progressUpdated`, `sessionCompleted`, `sessionFailed` are now structured. `watch` and `logs` render agent/user message bodies, progress `title — description`, plan step lists, and `sessionFailed.reason`.
 - **`cjules plan <ID>`** — print the latest generated plan with step titles and descriptions; `--all` walks every plan in the session; `-o text|json|yaml`.
+- **`cjules activity <SID> <AID>`** — fetch a single activity (`GET /v1alpha/sessions/{sid}/activities/{aid}`) and render its event body and artifacts.
 - **`watch --auto-approve`** — auto-approve plans when the session enters `AWAITING_PLAN_APPROVAL`.
 - **`watch --reply`** — at `AWAITING_USER_FEEDBACK`, prompt on STDIN and send the reply via `sendMessage`.
+- **`new --no-repo`** — create a repoless session (omits `sourceContext`).
+- **`new --parallel N`** — fan out N concurrent session creations with the same prompt and report each result.
+- **`logs --bash`** — print bashOutput artifacts only (command, output, exit code).
+- **`logs --save-media DIR`** — decode every media artifact's base64 payload into `DIR/NNN.{ext}`.
+- **`sources ls --filter`** — pass an AIP-160 filter expression through to the API.
 
 ### Changed
 
