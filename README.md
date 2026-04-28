@@ -1,6 +1,6 @@
 <div align="center">
   <img alt="cjules Logo" src="logo.webp" width="120px;">
-  <p>Directory tag manager — put your directories on the cutting board.</p>
+  <p>A power-user CLI for the Jules API, written in Crystal.</p>
 </div>
 
 <p align="center">
