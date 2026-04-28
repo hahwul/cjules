@@ -74,13 +74,20 @@ module Cjules
             patches.last
           end
 
-        text = chosen.unidiffPatch || ""
+        text = chosen.unidiffPatch
+        if text.nil? || text.empty?
+          STDERR.puts "error: selected patch has no unidiffPatch body"
+          return 1
+        end
 
         if apply
           tmp = File.tempfile("cjules-", ".patch")
-          File.write(tmp.path, text)
-          status = Process.run("git", ["apply", tmp.path], output: STDOUT, error: STDERR)
-          tmp.delete
+          begin
+            File.write(tmp.path, text)
+            status = Process.run("git", ["apply", tmp.path], output: STDOUT, error: STDERR)
+          ensure
+            tmp.delete
+          end
           unless status.success?
             STDERR.puts "git apply failed"
             return 1

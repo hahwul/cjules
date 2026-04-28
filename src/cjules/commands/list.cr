@@ -35,10 +35,6 @@ module Cjules
         cfg = Config.load
         client = Client.new(cfg)
 
-        # Fetch enough rows to satisfy filters; cap at a reasonable number unless --all.
-        fetch_cap = all ? nil : Math.max(limit * 4, 100)
-        sessions = API::Sessions.list_all(client, fetch_cap)
-
         cutoff : Time? = nil
         if s = since
           span = Util::Duration.parse(s)
@@ -49,28 +45,61 @@ module Cjules
           cutoff = Time.utc - span
         end
 
-        filtered = sessions.select do |sess|
-          next false if state_filter && sess.state != state_filter
+        match = ->(sess : Models::Session) do
+          return false if state_filter && sess.state != state_filter
           if rf = repo_filter
             src = sess.sourceContext.try(&.source) || ""
-            next false unless src.includes?(rf)
+            return false unless src.includes?(rf)
           end
           if c = cutoff
             if t = sess.createTime
               begin
-                next false if Time.parse_rfc3339(t) < c
+                return false if Time.parse_rfc3339(t) < c
               rescue
-                next false
+                return false
               end
             else
-              next false
+              return false
             end
           end
           if q = search
             combined = "#{sess.prompt} #{sess.title}"
-            next false unless combined.downcase.includes?(q.downcase)
+            return false unless combined.downcase.includes?(q.downcase)
           end
           true
+        end
+
+        # Paginate; stop early when --since cutoff is exceeded (API returns newest-first),
+        # or when we have enough post-filter matches (unless --all).
+        filtered = [] of Models::Session
+        token : String? = nil
+        stop_paging = false
+        loop do
+          page = API::Sessions.list_page(client, 100, token)
+          if items = page.sessions
+            items.each do |sess|
+              if c = cutoff
+                if t = sess.createTime
+                  begin
+                    if Time.parse_rfc3339(t) < c
+                      stop_paging = true
+                      next
+                    end
+                  rescue
+                    # malformed timestamp — skip but keep paging
+                  end
+                end
+              end
+              filtered << sess if match.call(sess)
+              if !all && filtered.size >= limit
+                stop_paging = true
+                break
+              end
+            end
+          end
+          break if stop_paging
+          token = page.nextPageToken
+          break if token.nil? || token.empty?
         end
 
         filtered = filtered[0...limit] unless all || filtered.size <= limit

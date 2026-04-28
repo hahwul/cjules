@@ -10,7 +10,7 @@ module Cjules
     module Watch
       extend self
 
-      TERMINAL_STATES = %w(COMPLETED FAILED)
+      TERMINAL_STATES = %w(COMPLETED FAILED CANCELLED)
 
       def run(args : Array(String)) : Int32
         interval = 3

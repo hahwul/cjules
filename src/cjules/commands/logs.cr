@@ -94,23 +94,34 @@ module Cjules
 
       private def save_media_artifacts(activities : Array(Models::Activity), dir : String) : Int32
         Dir.mkdir_p(dir)
-        seq = 0
+        written = 0
+        fallback_seq = 0
         activities.each do |a|
           if arts = a.artifacts
-            arts.each do |art|
+            arts.each_with_index do |art, idx|
               if med = art.media
                 data = med.data
                 next unless data && !data.empty?
-                seq += 1
                 ext = ext_for(med.mimeType)
-                fname = "%03d.%s" % [seq, ext]
+                fname =
+                  if aid = a.id
+                    "#{aid}-#{idx}.#{ext}"
+                  else
+                    fallback_seq += 1
+                    "media-%03d.%s" % [fallback_seq, ext]
+                  end
                 path = File.join(dir, fname)
+                if File.exists?(path)
+                  STDERR.puts "skip (exists): #{fname}"
+                  next
+                end
                 File.write(path, Base64.decode(data))
+                written += 1
               end
             end
           end
         end
-        seq
+        written
       end
 
       private def ext_for(mime : String?) : String
