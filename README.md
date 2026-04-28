@@ -44,6 +44,8 @@ install bin/cjules /usr/local/bin/
 
 ## Auth
 
+Issue an API key at [jules.google.com/settings/api](https://jules.google.com/settings/api) and save it with `cjules login`.
+
 ```sh
 cjules login --alias work        # prompts for the API key (input hidden)
 cjules login --alias personal --key AIza...
