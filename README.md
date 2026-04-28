@@ -30,13 +30,17 @@ quality-of-life features power users tend to miss:
 > care about and read the [CHANGELOG](CHANGELOG.md) when upgrading.
 
 ## Install
+### Homebrew
+```
+brew tap hahwul/cjules
+brew install cjules
+```
 
+### Build from Source
 ```sh
 shards build --release
 install bin/cjules /usr/local/bin/
 ```
-
-Requires Crystal `>= 1.20`.
 
 ## Auth
 
