@@ -21,15 +21,41 @@ module Cjules
         Colorize.enabled?
       end
 
-      def red(s : String);     s.colorize(:red).to_s;       end
-      def green(s : String);   s.colorize(:green).to_s;     end
-      def yellow(s : String);  s.colorize(:yellow).to_s;    end
-      def blue(s : String);    s.colorize(:blue).to_s;      end
-      def magenta(s : String); s.colorize(:magenta).to_s;   end
-      def cyan(s : String);    s.colorize(:cyan).to_s;      end
-      def gray(s : String);    s.colorize(:dark_gray).to_s; end
-      def bold(s : String);    s.colorize.mode(:bold).to_s; end
-      def dim(s : String);     s.colorize.mode(:dim).to_s;  end
+      def red(s : String)
+        s.colorize(:red).to_s
+      end
+
+      def green(s : String)
+        s.colorize(:green).to_s
+      end
+
+      def yellow(s : String)
+        s.colorize(:yellow).to_s
+      end
+
+      def blue(s : String)
+        s.colorize(:blue).to_s
+      end
+
+      def magenta(s : String)
+        s.colorize(:magenta).to_s
+      end
+
+      def cyan(s : String)
+        s.colorize(:cyan).to_s
+      end
+
+      def gray(s : String)
+        s.colorize(:dark_gray).to_s
+      end
+
+      def bold(s : String)
+        s.colorize.mode(:bold).to_s
+      end
+
+      def dim(s : String)
+        s.colorize.mode(:dim).to_s
+      end
 
       def state(s : String) : String
         case s

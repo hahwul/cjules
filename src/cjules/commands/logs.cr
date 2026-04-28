@@ -115,15 +115,15 @@ module Cjules
 
       private def ext_for(mime : String?) : String
         case mime
-        when "image/png"      then "png"
-        when "image/jpeg"     then "jpg"
-        when "image/gif"      then "gif"
-        when "image/webp"     then "webp"
-        when "image/svg+xml"  then "svg"
-        when "video/mp4"      then "mp4"
-        when "audio/mpeg"     then "mp3"
+        when "image/png"       then "png"
+        when "image/jpeg"      then "jpg"
+        when "image/gif"       then "gif"
+        when "image/webp"      then "webp"
+        when "image/svg+xml"   then "svg"
+        when "video/mp4"       then "mp4"
+        when "audio/mpeg"      then "mp3"
         when "application/pdf" then "pdf"
-        when "text/plain"     then "txt"
+        when "text/plain"      then "txt"
         else
           if mime && (slash = mime.index("/"))
             mime[(slash + 1)..].gsub(/[^A-Za-z0-9]+/, "")
