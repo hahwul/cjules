@@ -34,7 +34,7 @@ module Cjules
           p.on("--file PATH", "Read prompt from file") { |v| file = v }
           p.on("--auto-pr", "Set automationMode=AUTO_CREATE_PR") { auto_pr = true }
           p.on("--require-approval", "Require explicit plan approval") { require_approval = true }
-          p.on("--parallel N", "Create N concurrent sessions with the same prompt") { |v| parallel = v.to_i }
+          p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = v.to_i }
           p.on("-o FMT", "--output=FMT", "Output: text, json, yaml") { |v| output = v }
           p.on("-h", "--help", "Show help") { puts p; exit 0 }
           p.unknown_args { |before, _| positional = before }
