@@ -155,6 +155,54 @@ module Cjules
       property media : Media?
     end
 
+    class PlanGenerated
+      include JSON::Serializable
+      include YAML::Serializable
+
+      property plan : Plan?
+    end
+
+    class PlanApproved
+      include JSON::Serializable
+      include YAML::Serializable
+
+      property planId : String?
+    end
+
+    class UserMessaged
+      include JSON::Serializable
+      include YAML::Serializable
+
+      property userMessage : String?
+    end
+
+    class AgentMessaged
+      include JSON::Serializable
+      include YAML::Serializable
+
+      property agentMessage : String?
+    end
+
+    class ProgressUpdated
+      include JSON::Serializable
+      include YAML::Serializable
+
+      property title : String?
+      property description : String?
+    end
+
+    class SessionCompleted
+      include JSON::Serializable
+      include YAML::Serializable
+    end
+
+    class SessionFailed
+      include JSON::Serializable
+      include YAML::Serializable
+
+      property reason : String?
+    end
+
     class Activity
       include JSON::Serializable
       include YAML::Serializable
@@ -165,13 +213,13 @@ module Cjules
       property description : String?
       property createTime : String?
       property artifacts : Array(Artifact)?
-      property planGenerated : JSON::Any?
-      property planApproved : JSON::Any?
-      property userMessaged : JSON::Any?
-      property agentMessaged : JSON::Any?
-      property progressUpdated : JSON::Any?
-      property sessionCompleted : JSON::Any?
-      property sessionFailed : JSON::Any?
+      property planGenerated : PlanGenerated?
+      property planApproved : PlanApproved?
+      property userMessaged : UserMessaged?
+      property agentMessaged : AgentMessaged?
+      property progressUpdated : ProgressUpdated?
+      property sessionCompleted : SessionCompleted?
+      property sessionFailed : SessionFailed?
 
       def event_type : String
         return "plan_generated" if planGenerated

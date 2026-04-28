@@ -106,6 +106,54 @@ describe Cjules::Models::Activity do
     a = Cjules::Models::Activity.from_json(%({"id":"a"}))
     a.event_type.should eq("unknown")
   end
+
+  it "parses typed planGenerated payload with steps" do
+    json = %({"id":"a","planGenerated":{"plan":{"id":"p1","steps":[{"id":"s1","index":0,"title":"first","description":"do it"}]}}})
+    a = Cjules::Models::Activity.from_json(json)
+    plan = a.planGenerated.not_nil!.plan.not_nil!
+    plan.id.should eq("p1")
+    steps = plan.steps.not_nil!
+    steps.size.should eq(1)
+    steps[0].title.should eq("first")
+    steps[0].index.should eq(0)
+  end
+
+  it "parses typed agentMessaged payload" do
+    a = Cjules::Models::Activity.from_json(%({"id":"a","agentMessaged":{"agentMessage":"hi there"}}))
+    a.agentMessaged.not_nil!.agentMessage.should eq("hi there")
+  end
+
+  it "parses typed progressUpdated payload" do
+    a = Cjules::Models::Activity.from_json(%({"id":"a","progressUpdated":{"title":"writing","description":"tests"}}))
+    pu = a.progressUpdated.not_nil!
+    pu.title.should eq("writing")
+    pu.description.should eq("tests")
+  end
+
+  it "parses typed sessionFailed payload with reason" do
+    a = Cjules::Models::Activity.from_json(%({"id":"a","sessionFailed":{"reason":"deps broken"}}))
+    a.sessionFailed.not_nil!.reason.should eq("deps broken")
+  end
+
+  it "parses empty sessionCompleted payload" do
+    a = Cjules::Models::Activity.from_json(%({"id":"a","sessionCompleted":{}}))
+    a.sessionCompleted.should_not be_nil
+    a.event_type.should eq("session_completed")
+  end
+
+  it "parses planGenerated steps in declared index order" do
+    json = %({
+      "id":"a",
+      "planGenerated":{"plan":{"id":"p","steps":[
+        {"id":"s1","index":0,"title":"first"},
+        {"id":"s2","index":1,"title":"second","description":"do that"}
+      ]}}
+    })
+    a = Cjules::Models::Activity.from_json(json)
+    steps = a.planGenerated.not_nil!.plan.not_nil!.steps.not_nil!
+    steps.map(&.title).should eq(["first", "second"])
+    steps[1].description.should eq("do that")
+  end
 end
 
 describe Cjules::Config do

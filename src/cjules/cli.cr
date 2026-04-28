@@ -11,6 +11,7 @@ require "./commands/message"
 require "./commands/approve"
 require "./commands/logs"
 require "./commands/patch"
+require "./commands/plan"
 require "./commands/pr"
 require "./commands/pick"
 require "./commands/sources"
@@ -84,6 +85,7 @@ module Cjules
         when "approve"             then Commands::Approve.run(argv)
         when "logs", "log"         then Commands::Logs.run(argv)
         when "patch", "diff"       then Commands::Patch.run(argv)
+        when "plan"                then Commands::Plan.run(argv)
         when "pr"                  then Commands::PR.run(argv)
         when "pick"                then Commands::Pick.run(argv)
         when "sources"             then Commands::SourcesCmd.run(argv)
@@ -119,9 +121,10 @@ module Cjules
           ls                  List sessions with filters (--state, --since, --search, --repo)
           get <ID>            Show a session
           rm <ID...>          Delete sessions, or bulk by --state/--older-than/--repo
-          watch <ID>          Tail activities until session reaches a terminal state
+          watch <ID>          Tail activities; --auto-approve / --reply for hands-free runs
           msg <ID> <TEXT|->   Send a follow-up message
           approve <ID>        Approve a pending plan
+          plan <ID>           Show the latest generated plan (--all for history)
           logs <ID>           Export full activity log (md/json/text)
           patch <ID>          Print, list, or --apply gitPatch artifacts
           pr <ID>             Print PR URL (--open to launch browser)

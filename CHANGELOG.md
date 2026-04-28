@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Typed Activity events** — `planGenerated`, `planApproved`, `userMessaged`, `agentMessaged`, `progressUpdated`, `sessionCompleted`, `sessionFailed` are now structured. `watch` and `logs` render agent/user message bodies, progress `title — description`, plan step lists, and `sessionFailed.reason`.
+- **`cjules plan <ID>`** — print the latest generated plan with step titles and descriptions; `--all` walks every plan in the session; `-o text|json|yaml`.
+- **`watch --auto-approve`** — auto-approve plans when the session enters `AWAITING_PLAN_APPROVAL`.
+- **`watch --reply`** — at `AWAITING_USER_FEEDBACK`, prompt on STDIN and send the reply via `sendMessage`.
+
+### Changed
+
+- **`watch` polling** — uses the activities `createTime` filter so each poll only requests events newer than the last seen timestamp instead of re-listing the whole session.
+
 ## [0.1.0] - 2026-04-27
 
 Initial public release.

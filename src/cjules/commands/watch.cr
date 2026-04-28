@@ -14,11 +14,15 @@ module Cjules
 
       def run(args : Array(String)) : Int32
         interval = 3
+        auto_approve = false
+        reply = false
         positional = [] of String
 
         parser = OptionParser.new do |p|
-          p.banner = "Usage: cjules watch <ID> [--interval SEC]"
+          p.banner = "Usage: cjules watch <ID> [--interval SEC] [--auto-approve] [--reply]"
           p.on("--interval SEC", "Poll interval in seconds (default 3)") { |v| interval = v.to_i }
+          p.on("--auto-approve", "Automatically approve plans on AWAITING_PLAN_APPROVAL") { auto_approve = true }
+          p.on("--reply", "Prompt on AWAITING_USER_FEEDBACK and send the reply") { reply = true }
           p.on("-h", "--help", "Show help") { puts p; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
@@ -36,19 +40,31 @@ module Cjules
 
         seen = Set(String).new
         last_state : String? = nil
+        last_seen_time : Time? = nil
+        last_seen_str : String? = nil
+
         loop do
           sess = API::Sessions.get(client, sid)
-          activities = API::Activities.list_all(client, sid)
+          activities = API::Activities.list_all(client, sid, last_seen_str)
           activities.each do |a|
             key = a.id || "#{a.createTime}/#{a.event_type}"
             next if seen.includes?(key)
             seen << key
             print_activity(a)
+            if t_str = a.createTime
+              if t = parse_time(t_str)
+                if last_seen_time.nil? || t > last_seen_time.not_nil!
+                  last_seen_time = t
+                  last_seen_str = t_str
+                end
+              end
+            end
           end
 
           state = sess.state
           if state != last_state
             puts "#{Output::Colors.gray("--")} state: #{Output::Colors.state(state || "-")}"
+            handle_state_transition(state, sid, client, auto_approve, reply)
             last_state = state
           end
 
@@ -58,6 +74,38 @@ module Cjules
           sleep interval.seconds
         end
         0
+      end
+
+      private def handle_state_transition(state : String?, sid : String, client : Client, auto_approve : Bool, reply : Bool)
+        case state
+        when "AWAITING_PLAN_APPROVAL"
+          if auto_approve
+            puts "#{Output::Colors.gray("--")} auto-approving plan…"
+            API::Sessions.approve_plan(client, sid)
+          end
+        when "AWAITING_USER_FEEDBACK"
+          if reply
+            unless STDIN.tty?
+              STDERR.puts "#{Output::Colors.gray("--")} --reply requested but STDIN is not a TTY; skipping"
+              return
+            end
+            print "#{Output::Colors.bold("reply>")} "
+            STDOUT.flush
+            line = STDIN.gets
+            if line.nil? || line.strip.empty?
+              puts "#{Output::Colors.gray("--")} skipped (empty reply)"
+              return
+            end
+            API::Sessions.send_message(client, sid, line.strip)
+            puts "#{Output::Colors.gray("--")} message sent"
+          end
+        end
+      end
+
+      private def parse_time(s : String) : Time?
+        Time.parse_rfc3339(s)
+      rescue
+        nil
       end
 
       private def print_activity(a : Models::Activity)
@@ -72,8 +120,45 @@ module Cjules
             "??:??:??"
           end
         kind = a.event_type
-        desc = a.description || ""
-        puts "#{Output::Colors.gray(ts)}  #{Output::Colors.cyan(kind.ljust(20))}  #{desc}"
+        head = "#{Output::Colors.gray(ts)}  #{Output::Colors.cyan(kind.ljust(20))}  "
+        body = event_body(a)
+        body = a.description || "" if body.empty?
+        first, *rest = body.lines.empty? ? [body] : body.lines
+        puts "#{head}#{first.chomp}"
+        rest.each { |line| puts "#{" " * 32}#{line.chomp}" }
+      end
+
+      private def event_body(a : Models::Activity) : String
+        if pg = a.planGenerated
+          if plan = pg.plan
+            steps = plan.steps || [] of Models::PlanStep
+            return "plan with #{steps.size} step(s)" if steps.empty?
+            lines = steps.map { |s| "#{(s.index || 0) + 1}. #{s.title || "(untitled)"}" }
+            return ([Output::Colors.bold("plan generated:")] + lines).join("\n")
+          end
+        end
+        if pa = a.planApproved
+          return "plan #{pa.planId || "?"} approved"
+        end
+        if um = a.userMessaged
+          msg = um.userMessage || ""
+          return "#{Output::Colors.gray("user>")} #{msg}"
+        end
+        if am = a.agentMessaged
+          msg = am.agentMessage || ""
+          return "#{Output::Colors.cyan("agent>")} #{msg}"
+        end
+        if pu = a.progressUpdated
+          title = pu.title || ""
+          desc = pu.description
+          return desc && !desc.empty? ? "#{Output::Colors.bold(title)} — #{desc}" : title
+        end
+        if sf = a.sessionFailed
+          reason = sf.reason || "(no reason given)"
+          return Output::Colors.red("failed: #{reason}")
+        end
+        return Output::Colors.green("session completed") if a.sessionCompleted
+        ""
       end
     end
   end

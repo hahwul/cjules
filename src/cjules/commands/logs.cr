@@ -47,7 +47,9 @@ module Cjules
           puts "Title:   #{session.title}"
           puts ""
           activities.each do |a|
-            puts "[#{a.createTime}] #{a.event_type}: #{a.description}"
+            summary = event_summary(a)
+            line = summary.empty? ? (a.description || "") : summary
+            puts "[#{a.createTime}] #{a.event_type}: #{line}"
           end
         else
           render_md(session, activities)
@@ -74,9 +76,7 @@ module Cjules
           puts ""
           puts "### #{a.createTime} — #{a.event_type}"
           puts ""
-          if d = a.description
-            puts d
-          end
+          render_event_md(a)
           if arts = a.artifacts
             arts.each do |art|
               if cs = art.changeSet
@@ -111,6 +111,74 @@ module Cjules
             end
           end
         end
+      end
+
+      private def render_event_md(a : Models::Activity)
+        if pg = a.planGenerated
+          if plan = pg.plan
+            puts "**Plan generated**"
+            puts ""
+            (plan.steps || [] of Models::PlanStep).each do |s|
+              puts "#{(s.index || 0) + 1}. **#{s.title || "(untitled)"}**"
+              if d = s.description
+                puts "   #{d}" unless d.empty?
+              end
+            end
+            return
+          end
+        end
+        if pa = a.planApproved
+          puts "Plan `#{pa.planId || "?"}` approved."
+          return
+        end
+        if um = a.userMessaged
+          puts "**User:**"
+          puts ""
+          puts(um.userMessage || "")
+          return
+        end
+        if am = a.agentMessaged
+          puts "**Agent:**"
+          puts ""
+          puts(am.agentMessage || "")
+          return
+        end
+        if pu = a.progressUpdated
+          title = pu.title || ""
+          desc = pu.description
+          puts "**#{title}**" unless title.empty?
+          puts ""
+          puts desc if desc && !desc.empty?
+          return
+        end
+        if sf = a.sessionFailed
+          puts "**Session failed:** #{sf.reason || "(no reason given)"}"
+          return
+        end
+        if a.sessionCompleted
+          puts "Session completed."
+          return
+        end
+        if d = a.description
+          puts d
+        end
+      end
+
+      private def event_summary(a : Models::Activity) : String
+        if pg = a.planGenerated
+          n = pg.plan.try(&.steps).try(&.size) || 0
+          return "plan generated (#{n} step(s))"
+        end
+        return "plan #{a.planApproved.not_nil!.planId || "?"} approved" if a.planApproved
+        return "user> #{a.userMessaged.not_nil!.userMessage || ""}" if a.userMessaged
+        return "agent> #{a.agentMessaged.not_nil!.agentMessage || ""}" if a.agentMessaged
+        if pu = a.progressUpdated
+          parts = [pu.title, pu.description].compact.reject(&.empty?)
+          return parts.join(" — ")
+        end
+        return "failed: #{a.sessionFailed.not_nil!.reason || "(no reason)"}" if a.sessionFailed
+        return "completed" if a.sessionCompleted
+        ""
       end
     end
   end
