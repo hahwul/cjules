@@ -150,7 +150,7 @@ cjules prune --state AWAITING_USER_FEEDBACK --older-than 14d -y
 
 # Wipe every session for the active account (cannot be combined with other filters)
 cjules prune --all          # dry-run preview
-cjules prune --all -y       # actually delete
+cjules prune --all -y       # prompts for typed 'yes' confirmation
 
 # One-off targeted delete (no filters needed)
 cjules rm <session-id> <session-id> ...

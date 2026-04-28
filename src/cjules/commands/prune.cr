@@ -23,12 +23,12 @@ module Cjules
 
         parser = OptionParser.new do |p|
           p.banner = <<-USAGE
-            Usage: cjules prune [filters] [-y]
+            Usage: cjules prune (<filters>... | --all) [-y]
 
-            Bulk-only delete of sessions matching all given filters.
-            Default is dry-run; pass -y to actually delete.
+            Bulk delete sessions matching all given filters, or every session with --all.
+            Default is dry-run; pass -y to actually delete. --all -y prompts for confirmation.
 
-            Filters (at least one required):
+            Options:
             USAGE
           p.on("--completed", "Match state=COMPLETED (shortcut)") { completed = true }
           p.on("--failed", "Match state=FAILED (shortcut)") { failed = true }
@@ -116,8 +116,21 @@ module Cjules
         unless apply
           STDERR.puts "Dry-run: #{matched.size} session(s) would be deleted. Pass -y to apply."
           STDERR.puts ""
-          Output::Format.sessions(matched, "table", STDERR)
+          Output::Format.sessions(matched, "table", STDOUT)
           return 0
+        end
+
+        if all_flag
+          unless STDIN.tty?
+            STDERR.puts "error: --all -y requires an interactive terminal for confirmation"
+            return 2
+          end
+          STDERR.print "About to delete ALL #{matched.size} session(s) for the active account. Type 'yes' to continue: "
+          answer = STDIN.gets.try(&.strip)
+          unless answer == "yes"
+            STDERR.puts "aborted"
+            return 1
+          end
         end
 
         failed_count = 0
