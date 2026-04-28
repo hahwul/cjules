@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`logs --bash`** — print bashOutput artifacts only (command, output, exit code).
 - **`logs --save-media DIR`** — decode every media artifact's base64 payload into `DIR/NNN.{ext}`.
 - **`sources ls --filter`** — pass an AIP-160 filter expression through to the API.
+- **`cjules prune`** — bulk-only deletion with dry-run by default. Refuses positional IDs (use `rm` for those), requires at least one filter, and shows the matched session table on STDERR before applying. Accepts `--completed` / `--failed` shortcuts plus the existing `--state`, `--older-than`, `--repo` filters; pass `-y`/`--apply` to actually delete.
 
 ### Fixed
 

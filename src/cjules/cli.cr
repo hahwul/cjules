@@ -14,6 +14,7 @@ require "./commands/activity"
 require "./commands/patch"
 require "./commands/plan"
 require "./commands/pr"
+require "./commands/prune"
 require "./commands/pick"
 require "./commands/sources"
 require "./commands/config"
@@ -81,6 +82,7 @@ module Cjules
         when "ls", "list"          then Commands::List.run(argv)
         when "get", "show"         then Commands::Get.run(argv)
         when "rm", "delete"        then Commands::Delete.run(argv)
+        when "prune"               then Commands::Prune.run(argv)
         when "watch", "tail"       then Commands::Watch.run(argv)
         when "msg", "message"      then Commands::Message.run(argv)
         when "approve"             then Commands::Approve.run(argv)
@@ -123,6 +125,7 @@ module Cjules
           ls                  List sessions with filters (--state, --since, --search, --repo)
           get <ID>            Show a session
           rm <ID...>          Delete sessions, or bulk by --state/--older-than/--repo
+          prune               Bulk delete with dry-run; --completed, --failed, --older-than, --repo
           watch <ID>          Tail activities; --auto-approve / --reply for hands-free runs
           msg <ID> <TEXT|->   Send a follow-up message
           approve <ID>        Approve a pending plan
