@@ -18,6 +18,7 @@ module Cjules
         completed = false
         failed = false
         apply = false
+        all_flag = false
         positional = [] of String
 
         parser = OptionParser.new do |p|
@@ -34,6 +35,7 @@ module Cjules
           p.on("--state STATE", "Match state (e.g. AWAITING_USER_FEEDBACK)") { |v| state = v.upcase }
           p.on("--older-than DUR", "Only sessions older than (e.g. 30d, 12h)") { |v| older = v }
           p.on("--repo OWNER/REPO", "Match by repo substring") { |v| repo_filter = v }
+          p.on("--all", "Match every session (no filter); requires -y to apply") { all_flag = true }
           p.on("-y", "--apply", "Skip dry-run and delete") { apply = true }
           p.on("-h", "--help", "Show help") { puts p; exit 0 }
           p.unknown_args { |before, _| positional = before }
@@ -63,8 +65,13 @@ module Cjules
           state = "FAILED"
         end
 
-        unless state || older || repo_filter
-          STDERR.puts "error: at least one filter is required (--completed, --failed, --state, --older-than, --repo)"
+        if all_flag && (state || older || repo_filter)
+          STDERR.puts "error: --all cannot be combined with other filters"
+          return 2
+        end
+
+        unless all_flag || state || older || repo_filter
+          STDERR.puts "error: at least one filter is required (--completed, --failed, --state, --older-than, --repo, --all)"
           return 2
         end
 
