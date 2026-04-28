@@ -62,7 +62,7 @@ module Cjules
             (plan.steps || [] of Models::PlanStep).each do |s|
               puts "  #{(s.index || 0) + 1}. #{s.title || "(untitled)"}"
               if d = s.description
-                puts "     #{d}" unless d.empty?
+                d.lines.each { |l| puts "     #{l.chomp}" } unless d.empty?
               end
             end
           end
@@ -78,9 +78,13 @@ module Cjules
           puts Output::Colors.bold("Agent message:")
           puts(am.agentMessage || "")
         elsif pu = a.progressUpdated
-          puts ""
-          puts "#{Output::Colors.bold(pu.title || "")}"
-          puts(pu.description || "") if pu.description && !pu.description.not_nil!.empty?
+          title = pu.title
+          desc = pu.description
+          if (title && !title.empty?) || (desc && !desc.empty?)
+            puts ""
+            puts Output::Colors.bold(title) if title && !title.empty?
+            puts desc if desc && !desc.empty?
+          end
         elsif sf = a.sessionFailed
           puts ""
           puts "#{Output::Colors.red("Failed:")} #{sf.reason || "(no reason given)"}"

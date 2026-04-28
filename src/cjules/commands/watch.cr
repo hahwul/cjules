@@ -40,25 +40,15 @@ module Cjules
 
         seen = Set(String).new
         last_state : String? = nil
-        last_seen_time : Time? = nil
-        last_seen_str : String? = nil
 
         loop do
           sess = API::Sessions.get(client, sid)
-          activities = API::Activities.list_all(client, sid, last_seen_str)
+          activities = API::Activities.list_all(client, sid)
           activities.each do |a|
             key = a.id || "#{a.createTime}/#{a.event_type}"
             next if seen.includes?(key)
             seen << key
             print_activity(a)
-            if t_str = a.createTime
-              if t = parse_time(t_str)
-                if last_seen_time.nil? || t > last_seen_time.not_nil!
-                  last_seen_time = t
-                  last_seen_str = t_str
-                end
-              end
-            end
           end
 
           state = sess.state
@@ -100,12 +90,6 @@ module Cjules
             puts "#{Output::Colors.gray("--")} message sent"
           end
         end
-      end
-
-      private def parse_time(s : String) : Time?
-        Time.parse_rfc3339(s)
-      rescue
-        nil
       end
 
       private def print_activity(a : Models::Activity)

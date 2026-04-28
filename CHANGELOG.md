@@ -19,9 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`logs --save-media DIR`** — decode every media artifact's base64 payload into `DIR/NNN.{ext}`.
 - **`sources ls --filter`** — pass an AIP-160 filter expression through to the API.
 
-### Changed
+### Fixed
 
-- **`watch` polling** — uses the activities `createTime` filter so each poll only requests events newer than the last seen timestamp instead of re-listing the whole session.
+- **`watch` no longer sends a `createTime` query parameter** — the live Jules API returns HTTP 400 for it (the documented example is wrong). Polls re-list activities and dedupe via the in-memory `seen` set.
 
 ## [0.1.0] - 2026-04-27
 

@@ -92,7 +92,7 @@ module Cjules
         when "yaml" then puts successes.to_yaml
         else
           successes.each do |s|
-            puts "#{Output::Colors.bold(s.short_id)}  #{s.state}  #{s.url}"
+            puts "#{Output::Colors.bold(s.short_id)}  #{Output::Colors.state(s.state || "QUEUED")}  #{s.url}"
           end
         end
         if failures > 0

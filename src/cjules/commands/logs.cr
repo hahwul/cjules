@@ -220,11 +220,13 @@ module Cjules
           return
         end
         if pu = a.progressUpdated
-          title = pu.title || ""
+          title = pu.title
           desc = pu.description
-          puts "**#{title}**" unless title.empty?
-          puts ""
-          puts desc if desc && !desc.empty?
+          if (title && !title.empty?) || (desc && !desc.empty?)
+            puts "**#{title}**" if title && !title.empty?
+            puts ""
+            puts desc if desc && !desc.empty?
+          end
           return
         end
         if sf = a.sessionFailed

@@ -91,20 +91,19 @@ module Cjules
     module Activities
       extend self
 
-      def list_page(client : Client, session_id : String, page_size : Int32? = nil, page_token : String? = nil, created_after : String? = nil) : Models::ListActivitiesResponse
+      def list_page(client : Client, session_id : String, page_size : Int32? = nil, page_token : String? = nil) : Models::ListActivitiesResponse
         q = {} of String => String
         q["pageSize"] = page_size.to_s if page_size
         q["pageToken"] = page_token if page_token && !page_token.empty?
-        q["createTime"] = created_after if created_after && !created_after.empty?
         body = client.get("/v1alpha/sessions/#{session_id}/activities", q.empty? ? nil : q)
         Models::ListActivitiesResponse.from_json(body)
       end
 
-      def list_all(client : Client, session_id : String, created_after : String? = nil) : Array(Models::Activity)
+      def list_all(client : Client, session_id : String) : Array(Models::Activity)
         result = [] of Models::Activity
         token : String? = nil
         loop do
-          page = list_page(client, session_id, 100, token, created_after)
+          page = list_page(client, session_id, 100, token)
           if items = page.activities
             items.each { |a| result << a }
           end
