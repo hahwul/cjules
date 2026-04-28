@@ -110,6 +110,9 @@ module Cjules
       rescue e : Socket::Error | IO::Error
         STDERR.puts "network error: #{e.message}"
         1
+      rescue e : JSON::ParseException
+        STDERR.puts "error: malformed JSON in API response: #{e.message}"
+        1
       end
     end
 

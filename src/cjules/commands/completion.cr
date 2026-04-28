@@ -20,7 +20,7 @@ module Cjules
         _cjules() {
           local cur prev cmds
           cur="${COMP_WORDS[COMP_CWORD]}"
-          cmds="new ls get rm watch msg approve logs patch pr pick sources config login logout accounts completion version help"
+          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pick sources config login logout accounts completion version help"
           if [[ $COMP_CWORD -eq 1 ]]; then
             COMPREPLY=( $(compgen -W "$cmds" -- "$cur") )
           fi
@@ -37,10 +37,13 @@ module Cjules
             'ls:List sessions'
             'get:Show a session'
             'rm:Delete session(s)'
+            'prune:Bulk delete with dry-run'
             'watch:Tail a session'
             'msg:Send a message'
             'approve:Approve a plan'
+            'plan:Show generated plans'
             'logs:Export activity log'
+            'activity:Show a single activity'
             'patch:Print or apply gitPatch'
             'pr:Print PR URL'
             'pick:Interactive picker'
@@ -67,10 +70,13 @@ module Cjules
         complete -c cjules -n "__fish_use_subcommand" -a "ls"       -d "List sessions"
         complete -c cjules -n "__fish_use_subcommand" -a "get"      -d "Show a session"
         complete -c cjules -n "__fish_use_subcommand" -a "rm"       -d "Delete session(s)"
+        complete -c cjules -n "__fish_use_subcommand" -a "prune"    -d "Bulk delete with dry-run"
         complete -c cjules -n "__fish_use_subcommand" -a "watch"    -d "Tail a session"
         complete -c cjules -n "__fish_use_subcommand" -a "msg"      -d "Send a message"
         complete -c cjules -n "__fish_use_subcommand" -a "approve"  -d "Approve a plan"
+        complete -c cjules -n "__fish_use_subcommand" -a "plan"     -d "Show generated plans"
         complete -c cjules -n "__fish_use_subcommand" -a "logs"     -d "Export activity log"
+        complete -c cjules -n "__fish_use_subcommand" -a "activity" -d "Show a single activity"
         complete -c cjules -n "__fish_use_subcommand" -a "patch"    -d "Print or apply gitPatch"
         complete -c cjules -n "__fish_use_subcommand" -a "pr"       -d "Print PR URL"
         complete -c cjules -n "__fish_use_subcommand" -a "pick"     -d "Interactive picker"

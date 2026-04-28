@@ -31,8 +31,17 @@ module Cjules
         client = Client.new(cfg)
         sess = API::Sessions.get(client, Util::ID.normalize(id))
 
-        url = sess.outputs.try(&.first?).try(&.pullRequest).try(&.url)
-        if url.nil? || url.empty?
+        url : String? = nil
+        if outs = sess.outputs
+          outs.each do |o|
+            candidate = o.pullRequest.try(&.url)
+            if candidate && !candidate.empty?
+              url = candidate
+              break
+            end
+          end
+        end
+        if url.nil?
           STDERR.puts "no PR found for session #{sess.id}"
           return 1
         end
