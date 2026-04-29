@@ -41,6 +41,12 @@ shards build --release
 install bin/cjules /usr/local/bin/
 ```
 
+### AI Skill
+
+```sh
+npx skills add hahwul/cjules
+```
+
 ## Auth
 
 Issue an API key at [jules.google.com/settings/api](https://jules.google.com/settings/api) and save it with `cjules login`.
