@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
-- Subcommand `--help` now lists global flags (`--account`, `--no-color`) in a footer for discoverability.
-- Added `-f` / `--format` for output format selection on `ls`, `get`, `new`, `activity`, `plan`, `logs`, `sources ls`, `sources get`. The existing `-o` / `--output` is retained as an alias.
-- Added `cjules retry <ID>` which clones an existing session's prompt, repo, branch, and flags into a new session. Supports `--prompt` / `--prompt-file` / `--template` / `--branch` / `--note` / `--with-failure-reason`.
-- Added `cjules templates` (subcommands `ls`, `show`, `path`) for managing prompt templates stored in `~/.config/cjules/templates/`. Use them via `cjules new --template <name>`.
+- Added `cjules retry <ID>` to re-run a session by cloning its prompt, repo, branch, and flags. Supports `--prompt` / `--prompt-file` / `--template` / `--branch` / `--note` / `--with-failure-reason`.
+- Added `cjules templates` (`ls`, `show`, `path`) for prompt templates kept in `~/.config/cjules/templates/`. Use via `cjules new --template <name>` or `cjules retry --template <name>`.
+- Added `-f` / `--format` for output format on `ls`, `get`, `new`, `activity`, `plan`, `logs`, and `sources`. `-o` / `--output` kept as an alias.
+- Subcommand `--help` now lists global flags (`--account`, `--no-color`) in a footer.
 
 ## v0.1.0
 

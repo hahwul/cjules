@@ -1,5 +1,5 @@
 name: cjules
-version: 0.1.0
+version: 0.2.0
 description: |
   A power-user CLI for the Jules API in Crystal.
   Multi-account auth, bulk ops, watch mode, gitPatch extraction,
