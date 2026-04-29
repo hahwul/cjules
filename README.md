@@ -19,8 +19,8 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Watch** — `cjules watch <id>` tails activities; `--auto-approve --reply` for hands-free runs.
 - **Prune** — filter by state, age, repo, or `--all`; dry-run by default, `-y` to apply.
 - **Patch & PR** — `cjules patch <id> --apply` runs `git apply`; `cjules pr <id> --open` opens the PR.
-- **Logs** — `cjules logs <id> -o md` for a full report, `--bash` for shell transcripts, `--save-media` for artifacts.
-- **Pipe-friendly** — `-o table|json|jsonl|yaml` on every list command.
+- **Logs** — `cjules logs <id> -f md` for a full report, `--bash` for shell transcripts, `--save-media` for artifacts.
+- **Pipe-friendly** — `-f table|json|jsonl|yaml` on every list command.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
 - **Pick** — `cjules pick` (uses `fzf` if available) with `--action show|watch|pr|delete`.
 
@@ -79,7 +79,7 @@ cjules new --file PROMPT.md --repo hahwul/cjules --branch main --require-approva
 cjules new --no-repo "Draft release notes for v0.2.0"
 
 # Fan out N parallel sessions with the same prompt and capture the IDs
-cjules new --parallel 5 --auto-pr "Refactor the config loader" -o json | jq -r '.[].id' > ids.txt
+cjules new --parallel 5 --auto-pr "Refactor the config loader" -f json | jq -r '.[].id' > ids.txt
 ```
 
 ### Watching and steering
@@ -105,10 +105,10 @@ cjules approve <session-id>
 
 ```sh
 # Recent failures as JSONL, pipe into jq
-cjules ls --state FAILED --since 7d -o jsonl | jq -r '.id + "\t" + .title'
+cjules ls --state FAILED --since 7d -f jsonl | jq -r '.id + "\t" + .title'
 
 # Re-pull logs for the latest failure
-cjules ls --state FAILED --since 7d -o jsonl | jq -r .id | head -1 | xargs cjules logs
+cjules ls --state FAILED --since 7d -f jsonl | jq -r .id | head -1 | xargs cjules logs
 
 # Interactive picker (uses fzf if installed) — default action shows the session
 cjules pick
@@ -128,7 +128,7 @@ cjules pr <session-id>
 cjules pr <session-id> --open
 
 # Full session report as Markdown
-cjules logs <session-id> -o md > report.md
+cjules logs <session-id> -f md > report.md
 
 # Pull only bash command/output blocks (handy for debugging long runs)
 cjules logs <session-id> --bash

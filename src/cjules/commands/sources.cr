@@ -32,8 +32,8 @@ module Cjules
       def usage(io : IO = STDOUT)
         io.puts <<-USAGE
           Usage:
-            cjules sources ls [-o table|json|yaml|jsonl]
-            cjules sources get <ID> [-o text|json|yaml]
+            cjules sources ls [-f table|json|yaml|jsonl]
+            cjules sources get <ID> [-f text|json|yaml]
           USAGE
         io.puts Help::GLOBAL_FLAGS
       end
@@ -43,7 +43,8 @@ module Cjules
         filter : String? = nil
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules sources ls [options]"
-          p.on("-o FMT", "--output=FMT", "table, json, yaml, jsonl") { |v| output = v }
+          p.on("-f FMT", "--format=FMT", "Output format: table, json, yaml, jsonl") { |v| output = v }
+          p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("--filter EXPR", "AIP-160 filter (e.g. 'name=sources/foo OR name=sources/bar')") { |v| filter = v }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
         end
@@ -60,7 +61,8 @@ module Cjules
         positional = [] of String
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules sources get <ID>"
-          p.on("-o FMT", "--output=FMT", "text, json, yaml") { |v| output = v }
+          p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
+          p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end

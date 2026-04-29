@@ -17,7 +17,8 @@ module Cjules
 
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules get <ID> [options]"
-          p.on("-o FMT", "--output=FMT", "Output: text, json, yaml") { |v| output = v }
+          p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
+          p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end

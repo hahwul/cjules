@@ -28,7 +28,8 @@ module Cjules
           p.on("--search QUERY", "Substring match on prompt/title") { |v| search = v }
           p.on("--limit N", "Max sessions to show (default 30)") { |v| limit = v.to_i }
           p.on("--all", "Fetch all pages, ignore --limit") { all = true }
-          p.on("-o FMT", "--output=FMT", "table, json, yaml, jsonl") { |v| output = v }
+          p.on("-f FMT", "--format=FMT", "Output format: table, json, yaml, jsonl") { |v| output = v }
+          p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
         end
         parser.parse(args.dup)

@@ -18,8 +18,9 @@ module Cjules
         save_media : String? = nil
         positional = [] of String
         parser = OptionParser.new do |p|
-          p.banner = "Usage: cjules logs <ID> [-o md|json|text] [--bash] [--save-media DIR]"
-          p.on("-o FMT", "--output=FMT", "Output: md, json, text") { |v| output = v }
+          p.banner = "Usage: cjules logs <ID> [-f md|json|text] [--bash] [--save-media DIR]"
+          p.on("-f FMT", "--format=FMT", "Output format: md, json, text") { |v| output = v }
+          p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("--bash", "Print bashOutput artifacts only (command/output/exit)") { bash_only = true }
           p.on("--save-media DIR", "Decode media artifacts and save into DIR") { |v| save_media = v }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }

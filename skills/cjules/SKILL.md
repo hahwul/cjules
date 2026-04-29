@@ -30,12 +30,12 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 | Command | Use it for |
 |---|---|
 | `cjules new [PROMPT\|-]` | Create a session. Auto-detects `--repo` from `git remote origin` and `--branch` from `HEAD`. |
-| `cjules ls` | List sessions. Filters: `--state`, `--repo`, `--since`, `--search`. Outputs: `-o table\|json\|jsonl\|yaml`. |
+| `cjules ls` | List sessions. Filters: `--state`, `--repo`, `--since`, `--search`. Outputs: `-f table\|json\|jsonl\|yaml`. |
 | `cjules get <ID>` | Show one session in full. |
 | `cjules watch <ID>` | Tail activities until session reaches a terminal state. `--interval N` to change polling. |
 | `cjules msg <ID> <TEXT\|->` | Send a follow-up message into an active session. |
 | `cjules approve <ID>` | Approve a plan. Aborts unless state is `AWAITING_PLAN_APPROVAL`; pass `--force` to skip the precheck. |
-| `cjules logs <ID> [-o md\|json\|text]` | Export the full activity log. Markdown is the default and the most useful format for a human report. |
+| `cjules logs <ID> [-f md\|json\|text]` | Export the full activity log. Markdown is the default and the most useful format for a human report. |
 | `cjules patch <ID> [--list\|--apply\|--index N]` | Print, list, or `git apply` the session's gitPatch artifacts. |
 | `cjules pr <ID> [--open]` | Print (or open) the pull-request URL produced by the session. |
 | `cjules rm <ID...>` or `cjules rm --state X --older-than Y --repo R` | Delete sessions individually or in bulk. Confirmation unless `-y`. |
@@ -56,18 +56,18 @@ cjules logout work               # remove a single account
 
 ## Output / pipe patterns
 
-Always prefer `-o jsonl` when piping to `jq` (one session per line, no commas):
+Always prefer `-f jsonl` when piping to `jq` (one session per line, no commas):
 
 ```sh
 # Most-recent failed session ID
-cjules ls --state FAILED --limit 1 -o jsonl | jq -r .id
+cjules ls --state FAILED --limit 1 -f jsonl | jq -r .id
 
 # Re-fetch and apply the patch from the latest completed session
-ID=$(cjules ls --state COMPLETED --since 24h --limit 1 -o jsonl | jq -r .id)
+ID=$(cjules ls --state COMPLETED --since 24h --limit 1 -f jsonl | jq -r .id)
 cjules patch $ID --apply
 
 # Markdown report of a session for a PR description
-cjules logs $ID -o md > report.md
+cjules logs $ID -f md > report.md
 ```
 
 ## Common recipes
@@ -75,7 +75,7 @@ cjules logs $ID -o md > report.md
 **Triage failures**
 ```sh
 cjules ls --state FAILED --since 7d
-cjules logs <id> -o md | less
+cjules logs <id> -f md | less
 ```
 
 **Bulk cleanup**
