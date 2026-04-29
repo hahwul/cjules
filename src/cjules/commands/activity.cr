@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -17,7 +18,7 @@ module Cjules
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules activity <SESSION_ID> <ACTIVITY_ID> [-o text|json|yaml]"
           p.on("-o FMT", "--output=FMT", "text, json, yaml") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

@@ -1,3 +1,4 @@
+require "../help"
 require "../config"
 
 module Cjules
@@ -37,6 +38,7 @@ module Cjules
               cjules accounts use <alias>
               cjules logout [--alias <name>] [--all]
             USAGE
+          puts Help::GLOBAL_FLAGS
           0
         else
           STDERR.puts "unknown config subcommand: #{sub}"

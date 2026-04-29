@@ -1,3 +1,4 @@
+require "../help"
 require "../config"
 
 module Cjules
@@ -32,6 +33,7 @@ module Cjules
             cjules accounts use <alias>
             cjules accounts current
           USAGE
+        io.puts Help::GLOBAL_FLAGS
       end
 
       private def ls : Int32

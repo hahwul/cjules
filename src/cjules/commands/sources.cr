@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -34,6 +35,7 @@ module Cjules
             cjules sources ls [-o table|json|yaml|jsonl]
             cjules sources get <ID> [-o text|json|yaml]
           USAGE
+        io.puts Help::GLOBAL_FLAGS
       end
 
       private def ls(args : Array(String)) : Int32
@@ -43,7 +45,7 @@ module Cjules
           p.banner = "Usage: cjules sources ls [options]"
           p.on("-o FMT", "--output=FMT", "table, json, yaml, jsonl") { |v| output = v }
           p.on("--filter EXPR", "AIP-160 filter (e.g. 'name=sources/foo OR name=sources/bar')") { |v| filter = v }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
         end
         parser.parse(args.dup)
         cfg = Config.load
@@ -59,7 +61,7 @@ module Cjules
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules sources get <ID>"
           p.on("-o FMT", "--output=FMT", "text, json, yaml") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

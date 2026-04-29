@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -16,7 +17,7 @@ module Cjules
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules pr <ID> [--open]"
           p.on("--open", "Open the PR in the default browser") { open_browser = true }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

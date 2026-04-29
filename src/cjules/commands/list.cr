@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -28,7 +29,7 @@ module Cjules
           p.on("--limit N", "Max sessions to show (default 30)") { |v| limit = v.to_i }
           p.on("--all", "Fetch all pages, ignore --limit") { all = true }
           p.on("-o FMT", "--output=FMT", "table, json, yaml, jsonl") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
         end
         parser.parse(args.dup)
 

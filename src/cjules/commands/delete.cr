@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -27,7 +28,7 @@ module Cjules
           p.on("--older-than DUR", "Bulk: only sessions older than (e.g. 30d)") { |v| older = v }
           p.on("--repo OWNER/REPO", "Bulk filter by repo") { |v| repo_filter = v }
           p.on("-y", "--yes", "Skip confirmation") { yes = true }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

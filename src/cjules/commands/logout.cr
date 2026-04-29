@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 
 module Cjules
@@ -17,7 +18,7 @@ module Cjules
           p.on("--alias NAME", "Remove a specific account") { |v| alias_name = v }
           p.on("--all", "Remove every saved account") { all = true }
           p.on("-y", "--yes", "Skip confirmation") { yes = true }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

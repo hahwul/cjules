@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -19,7 +20,7 @@ module Cjules
           p.banner = "Usage: cjules plan <ID> [-o text|json|yaml] [--all]"
           p.on("-o FMT", "--output=FMT", "text, json, yaml") { |v| output = v }
           p.on("--all", "Show every plan generated in the session (default: latest only)") { all = true }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -20,7 +21,7 @@ module Cjules
           p.on("--apply", "Apply with `git apply` in current directory") { apply = true }
           p.on("--index N", "Pick specific patch (default: last)") { |v| index = v.to_i }
           p.on("--list", "List all patches with metadata, do not print body") { list_only = true }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

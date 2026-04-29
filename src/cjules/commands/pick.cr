@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -17,7 +18,7 @@ module Cjules
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules pick [--action show|watch|delete|pr]"
           p.on("--action ACTION", "show, watch, delete, pr (default show)") { |v| action = v }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
         end
         parser.parse(args.dup)
 

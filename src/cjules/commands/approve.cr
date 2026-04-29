@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "../config"
 require "../client"
 require "../api"
@@ -15,7 +16,7 @@ module Cjules
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules approve <ID> [--force]"
           p.on("-f", "--force", "Skip the state precheck and call approvePlan anyway") { force = true }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

@@ -1,4 +1,5 @@
 require "option_parser"
+require "../help"
 require "json"
 require "../config"
 require "../client"
@@ -36,7 +37,7 @@ module Cjules
           p.on("--require-approval", "Require explicit plan approval") { require_approval = true }
           p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = v.to_i }
           p.on("-o FMT", "--output=FMT", "Output: text, json, yaml") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; exit 0 }
+          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)
