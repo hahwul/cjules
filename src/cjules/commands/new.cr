@@ -6,6 +6,7 @@ require "../client"
 require "../api"
 require "../util"
 require "../output/format"
+require "./templates"
 
 module Cjules
   module Commands
@@ -17,6 +18,7 @@ module Cjules
         branch : String? = nil
         title : String? = nil
         file : String? = nil
+        template_name : String? = nil
         source_override : String? = nil
         no_repo = false
         auto_pr = false
@@ -33,6 +35,7 @@ module Cjules
           p.on("--no-repo", "Create a repoless session (omit sourceContext)") { no_repo = true }
           p.on("--title TITLE", "Session title") { |v| title = v }
           p.on("--file PATH", "Read prompt from file") { |v| file = v }
+          p.on("--template NAME", "Use a saved prompt template (see `cjules templates`)") { |v| template_name = v }
           p.on("--auto-pr", "Set automationMode=AUTO_CREATE_PR") { auto_pr = true }
           p.on("--require-approval", "Require explicit plan approval") { require_approval = true }
           p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = v.to_i }
@@ -46,6 +49,19 @@ module Cjules
         if parallel < 1
           STDERR.puts "error: --parallel must be >= 1"
           return 2
+        end
+
+        if tn = template_name
+          if file
+            STDERR.puts "error: --template and --file are mutually exclusive"
+            return 2
+          end
+          tpath = Templates.find(tn)
+          unless tpath
+            STDERR.puts "error: no such template: #{tn} (looked in #{Templates.dir})"
+            return 1
+          end
+          file = tpath
         end
 
         prompt_arg = positional[0]?
@@ -104,7 +120,7 @@ module Cjules
         0
       end
 
-      private def build_payload(prompt : String, title : String?, require_approval : Bool, auto_pr : Bool, source : String?, starting_branch : String?) : String
+      def build_payload(prompt : String, title : String?, require_approval : Bool, auto_pr : Bool, source : String?, starting_branch : String?) : String
         JSON.build do |j|
           j.object do
             j.field "prompt", prompt

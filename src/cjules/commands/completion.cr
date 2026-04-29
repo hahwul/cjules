@@ -20,7 +20,7 @@ module Cjules
         _cjules() {
           local cur prev cmds
           cur="${COMP_WORDS[COMP_CWORD]}"
-          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pick sources config login logout accounts completion version help"
+          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pick retry sources templates config login logout accounts completion version help"
           if [[ $COMP_CWORD -eq 1 ]]; then
             COMPREPLY=( $(compgen -W "$cmds" -- "$cur") )
           fi
@@ -47,7 +47,9 @@ module Cjules
             'patch:Print or apply gitPatch'
             'pr:Print PR URL'
             'pick:Interactive picker'
+            'retry:Re-run a session'
             'sources:Manage sources'
+            'templates:Manage prompt templates'
             'config:Show or set config'
             'login:Add an API key/account'
             'logout:Remove an API key/account'
@@ -80,7 +82,9 @@ module Cjules
         complete -c cjules -n "__fish_use_subcommand" -a "patch"    -d "Print or apply gitPatch"
         complete -c cjules -n "__fish_use_subcommand" -a "pr"       -d "Print PR URL"
         complete -c cjules -n "__fish_use_subcommand" -a "pick"     -d "Interactive picker"
+        complete -c cjules -n "__fish_use_subcommand" -a "retry"    -d "Re-run a session"
         complete -c cjules -n "__fish_use_subcommand" -a "sources"  -d "Manage sources"
+        complete -c cjules -n "__fish_use_subcommand" -a "templates" -d "Manage prompt templates"
         complete -c cjules -n "__fish_use_subcommand" -a "config"   -d "Show or set config"
         complete -c cjules -n "__fish_use_subcommand" -a "login"    -d "Add an API key/account"
         complete -c cjules -n "__fish_use_subcommand" -a "logout"   -d "Remove an API key/account"

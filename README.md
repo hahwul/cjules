@@ -23,6 +23,8 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Pipe-friendly** — `-f table|json|jsonl|yaml` on every list command.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
 - **Pick** — `cjules pick` (uses `fzf` if available) with `--action show|watch|pr|delete`.
+- **Retry** — `cjules retry <id>` re-runs a session by cloning its prompt, repo, branch, and flags; `--with-failure-reason` carries the original failure message into the new prompt.
+- **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and run `cjules new --template <name>`.
 
 > **Heads up:** the Jules API is currently labelled `v1alpha`. Schema and
 > behaviour can change without notice. Pin a release of cjules in scripts you

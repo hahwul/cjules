@@ -16,7 +16,9 @@ require "./commands/plan"
 require "./commands/pr"
 require "./commands/prune"
 require "./commands/pick"
+require "./commands/retry"
 require "./commands/sources"
+require "./commands/templates"
 require "./commands/config"
 require "./commands/login"
 require "./commands/logout"
@@ -92,7 +94,9 @@ module Cjules
         when "plan"                then Commands::Plan.run(argv)
         when "pr"                  then Commands::PR.run(argv)
         when "pick"                then Commands::Pick.run(argv)
+        when "retry"               then Commands::Retry.run(argv)
         when "sources"             then Commands::SourcesCmd.run(argv)
+        when "templates", "tpl"    then Commands::Templates.run(argv)
         when "config"              then Commands::ConfigCmd.run(argv)
         when "login"               then Commands::Login.run(argv)
         when "logout"              then Commands::Logout.run(argv)
@@ -138,10 +142,16 @@ module Cjules
           patch <ID>          Print, list, or --apply gitPatch artifacts
           pr <ID>             Print PR URL (--open to launch browser)
           pick                Interactive picker (uses fzf if installed)
+          retry <ID>          Re-run a session by cloning its prompt/repo/branch
 
         SOURCES:
           sources ls
           sources get <ID>
+
+        TEMPLATES:
+          templates ls        List saved prompt templates
+          templates show <N>  Print a template's body
+          templates path      Print the templates directory
 
         ACCOUNTS:
           login               Save an API key under an alias
