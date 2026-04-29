@@ -24,7 +24,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
 - **Pick** — `cjules pick` (uses `fzf` if available) with `--action show|watch|pr|delete`.
 - **Retry** — `cjules retry <id>` re-runs a session by cloning its prompt, repo, branch, and flags; `--with-failure-reason` carries the original failure message into the new prompt.
-- **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and run `cjules new --template <name>`.
+- **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and reference them via `--template <name>` on `new` or `retry`.
 
 > **Heads up:** the Jules API is currently labelled `v1alpha`. Schema and
 > behaviour can change without notice. Pin a release of cjules in scripts you
@@ -137,6 +137,48 @@ cjules logs <session-id> --bash
 
 # Save media artifacts (screenshots, etc.) to a directory
 cjules logs <session-id> --save-media ./artifacts
+```
+
+### Re-running with `retry`
+
+`retry` clones a session's prompt, repo, branch, title, and `--auto-pr` /
+`--require-approval` flags into a brand-new session. Handy for FAILED runs.
+
+```sh
+# Plain retry: same prompt, same repo/branch, new session
+cjules retry <session-id>
+
+# Retry and feed the original failure reason back into the prompt
+cjules retry <session-id> --with-failure-reason
+
+# Tweak the prompt for the next attempt without losing the rest of the context
+cjules retry <session-id> --note "Skip the migration step this time."
+
+# Override prompt or branch entirely
+cjules retry <session-id> --prompt "New approach: ..."
+cjules retry <session-id> --branch experimental-fix
+
+# Pick the most-recent failure and retry it in one line
+cjules ls --state FAILED --limit 1 -f jsonl | jq -r .id | xargs cjules retry --with-failure-reason
+```
+
+### Reusable prompts with `templates`
+
+Drop `*.md` or `*.txt` files into `~/.config/cjules/templates/` and reference
+them by filename. Templates are looked up there by short name.
+
+```sh
+# See what's available and where they live
+cjules templates ls
+cjules templates path
+cjules templates show bugfix       # print body
+
+# Use a template as the prompt for a new session
+cjules new --template bugfix
+cjules new --template bugfix --auto-pr --branch hotfix
+
+# Or as the prompt for a retry
+cjules retry <session-id> --template bugfix
 ```
 
 ### Bulk cleanup with `prune`

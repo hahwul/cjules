@@ -19,8 +19,6 @@ jobs:
             platform: linux
           - os: macos-latest
             platform: macos
-          - os: macos-13
-            platform: macos
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Crystal
