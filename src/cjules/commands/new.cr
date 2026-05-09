@@ -150,14 +150,22 @@ module Cjules
       # are not already in `claimed`; return up to `expected` of them.
       private def reconcile_failures(client : Client, title : String?, prompt : String, source : String?, started_at : Time, expected : Int32, claimed : Array(Models::Session)) : Array(Models::Session)
         return [] of Models::Session if expected <= 0
-        # Reconciliation needs *some* identifier — a title is best. If neither
-        # title nor a non-empty prompt is available we can't disambiguate.
+        return [] of Models::Session if title.nil? && prompt.empty?
+
+        recent = fetch_sessions_since(client, started_at)
+        match_recovered(recent, title, prompt, source, claimed, expected)
+      end
+
+      # Pure matching logic — exposed (non-private) so specs can drive it
+      # without a live API. `recent` should already be filtered to the
+      # post-`started_at` window.
+      def match_recovered(recent : Array(Models::Session), title : String?, prompt : String, source : String?, claimed : Array(Models::Session), expected : Int32) : Array(Models::Session)
+        return [] of Models::Session if expected <= 0
         return [] of Models::Session if title.nil? && prompt.empty?
 
         claimed_ids = Set(String).new
         claimed.each { |s| (id = s.id) && claimed_ids.add(id) }
 
-        recent = fetch_sessions_since(client, started_at)
         candidates = recent.select do |s|
           next false if (id = s.id) && claimed_ids.includes?(id)
           if t = title
@@ -174,7 +182,9 @@ module Cjules
       end
 
       # Paginate sessions newest-first until we cross `cutoff`. Mirrors the
-      # cutoff-aware pagination in `cjules ls`.
+      # cutoff-aware pagination in `cjules ls`. Network/API/parse errors are
+      # silently swallowed so the caller can surface the *original* submission
+      # error; programmer errors still propagate.
       private def fetch_sessions_since(client : Client, cutoff : Time) : Array(Models::Session)
         result = [] of Models::Session
         begin
@@ -198,9 +208,9 @@ module Cjules
             token = page.nextPageToken
             break if token.nil? || token.empty?
           end
-        rescue
-          # If the lookup itself fails we just give up on reconciliation; the
-          # caller will surface the original error.
+        rescue Client::APIError | Socket::Error | IO::Error | JSON::ParseException
+          # Reconciliation lookup failed — fall through with whatever we
+          # gathered so far (likely empty).
         end
         result
       end

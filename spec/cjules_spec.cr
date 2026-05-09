@@ -5,6 +5,7 @@ require "../src/cjules/output/format"
 require "../src/cjules/output/colors"
 require "../src/cjules/output/table"
 require "../src/cjules/config"
+require "../src/cjules/commands/new"
 
 describe Cjules::Util::ID do
   it "strips sessions/ prefix" do
@@ -282,6 +283,81 @@ describe Cjules::Output::Colors do
     Cjules::Output::Colors.state("UNKNOWN").should eq("UNKNOWN")
   ensure
     Cjules::Output::Colors.disable!
+  end
+end
+
+describe Cjules::Commands::New do
+  describe ".match_recovered" do
+    sess = ->(id : String, title : String?, prompt : String?, source : String?) do
+      ctx = source ? %(,"sourceContext":{"source":#{source.to_json}}) : ""
+      ttl = title ? %(,"title":#{title.to_json}) : ""
+      pmt = prompt ? %(,"prompt":#{prompt.to_json}) : ""
+      Cjules::Models::Session.from_json(%({"id":#{id.to_json}#{ttl}#{pmt}#{ctx}}))
+    end
+    none = [] of Cjules::Models::Session
+
+    it "returns empty when expected <= 0" do
+      recent = [sess.call("a", "T", "P", nil)]
+      Cjules::Commands::New.match_recovered(recent, "T", "P", nil, none, 0).should be_empty
+    end
+
+    it "returns empty when no title and prompt is empty" do
+      recent = [sess.call("a", nil, "", nil)]
+      Cjules::Commands::New.match_recovered(recent, nil, "", nil, none, 1).should be_empty
+    end
+
+    it "matches by exact title and skips already-claimed ids" do
+      recent = [
+        sess.call("a", "batch 1", "p", "sources/github/o/r"),
+        sess.call("b", "batch 1", "p", "sources/github/o/r"),
+        sess.call("c", "other",   "p", "sources/github/o/r"),
+      ]
+      claimed = [sess.call("a", "batch 1", "p", "sources/github/o/r")]
+      out = Cjules::Commands::New.match_recovered(recent, "batch 1", "p", "sources/github/o/r", claimed, 5)
+      out.map(&.id).should eq(["b"])
+    end
+
+    it "falls back to exact prompt match when title is nil" do
+      recent = [
+        sess.call("a", nil, "hello world", nil),
+        sess.call("b", nil, "different",   nil),
+      ]
+      out = Cjules::Commands::New.match_recovered(recent, nil, "hello world", nil, none, 5)
+      out.map(&.id).should eq(["a"])
+    end
+
+    it "rejects sessions whose source does not match" do
+      recent = [
+        sess.call("a", "T", "p", "sources/github/o/r"),
+        sess.call("b", "T", "p", "sources/github/o/different"),
+      ]
+      out = Cjules::Commands::New.match_recovered(recent, "T", "p", "sources/github/o/r", none, 5)
+      out.map(&.id).should eq(["a"])
+    end
+
+    it "ignores source filter when caller passed source=nil (e.g. --no-repo)" do
+      recent = [
+        sess.call("a", "T", "p", "sources/github/o/r"),
+        sess.call("b", "T", "p", nil),
+      ]
+      out = Cjules::Commands::New.match_recovered(recent, "T", "p", nil, none, 5)
+      out.map(&.id).should eq(["a", "b"])
+    end
+
+    it "caps results at expected" do
+      recent = (1..5).map { |i| sess.call("s#{i}", "T", "p", nil) }.to_a
+      out = Cjules::Commands::New.match_recovered(recent, "T", "p", nil, none, 2)
+      out.map(&.id).should eq(["s1", "s2"])
+    end
+
+    it "prefers title over prompt when both are provided (title is the discriminator)" do
+      recent = [
+        sess.call("a", "T", "different prompt", nil),
+        sess.call("b", "OTHER", "matching prompt", nil),
+      ]
+      out = Cjules::Commands::New.match_recovered(recent, "T", "matching prompt", nil, none, 5)
+      out.map(&.id).should eq(["a"])
+    end
   end
 end
 
