@@ -25,6 +25,7 @@ module Cjules
         require_approval = false
         parallel = 1
         output = "text"
+        reconcile_on_error = true
         positional = [] of String
 
         parser = OptionParser.new do |p|
@@ -39,6 +40,7 @@ module Cjules
           p.on("--auto-pr", "Set automationMode=AUTO_CREATE_PR") { auto_pr = true }
           p.on("--require-approval", "Require explicit plan approval") { require_approval = true }
           p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = v.to_i }
+          p.on("--no-reconcile-on-error", "Do not look up matching recent sessions after a 4xx; just report the error") { reconcile_on_error = false }
           p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
@@ -95,15 +97,37 @@ module Cjules
         body = build_payload(prompt, title, require_approval, auto_pr, source, starting_branch)
 
         client = Client.new(cfg)
+        # Buffer for clock skew between local clock and server-assigned createTime.
+        started_at = Time.utc - 30.seconds
+
         if parallel == 1
-          session = API::Sessions.create(client, body)
-          Output::Format.session(session, output)
-          return 0
+          begin
+            session = API::Sessions.create(client, body)
+            Output::Format.session(session, output)
+            return 0
+          rescue e : Client::APIError
+            raise e unless reconcile_on_error && e.status >= 400 && e.status < 500
+            recovered = reconcile_failures(client, title, prompt, source, started_at, 1, [] of Models::Session)
+            raise e if recovered.empty?
+            STDERR.puts "info: HTTP #{e.status} on submit but a matching session was created server-side; reporting it instead (use --no-reconcile-on-error to disable)"
+            Output::Format.session(recovered[0], output)
+            return 0
+          end
         end
 
         results = create_concurrent(client, body, parallel)
         successes = results.compact_map { |r| r.is_a?(Models::Session) ? r : nil }
+        client_errors = results.count { |r| r.is_a?(Client::APIError) && r.status >= 400 && r.status < 500 }
         failures = results.count { |r| r.is_a?(Exception) }
+
+        if reconcile_on_error && client_errors > 0
+          recovered = reconcile_failures(client, title, prompt, source, started_at, client_errors, successes)
+          if recovered.size > 0
+            STDERR.puts "info: reconciled #{recovered.size} of #{client_errors} 4xx failure(s) by matching recent sessions (use --no-reconcile-on-error to disable)"
+            successes.concat(recovered)
+            failures -= recovered.size
+          end
+        end
 
         case output
         when "json" then puts successes.to_json
@@ -118,6 +142,77 @@ module Cjules
           return 1
         end
         0
+      end
+
+      # After a 4xx, the Jules API sometimes returns "Precondition check failed"
+      # while having already created the session (see issue #1). Look up sessions
+      # created since `started_at` that match the title (or prompt fallback) and
+      # are not already in `claimed`; return up to `expected` of them.
+      private def reconcile_failures(client : Client, title : String?, prompt : String, source : String?, started_at : Time, expected : Int32, claimed : Array(Models::Session)) : Array(Models::Session)
+        return [] of Models::Session if expected <= 0
+        return [] of Models::Session if title.nil? && prompt.empty?
+
+        recent = fetch_sessions_since(client, started_at)
+        match_recovered(recent, title, prompt, source, claimed, expected)
+      end
+
+      # Pure matching logic — exposed (non-private) so specs can drive it
+      # without a live API. `recent` should already be filtered to the
+      # post-`started_at` window.
+      def match_recovered(recent : Array(Models::Session), title : String?, prompt : String, source : String?, claimed : Array(Models::Session), expected : Int32) : Array(Models::Session)
+        return [] of Models::Session if expected <= 0
+        return [] of Models::Session if title.nil? && prompt.empty?
+
+        claimed_ids = Set(String).new
+        claimed.each { |s| (id = s.id) && claimed_ids.add(id) }
+
+        candidates = recent.select do |s|
+          next false if (id = s.id) && claimed_ids.includes?(id)
+          if t = title
+            next false unless s.title == t
+          else
+            next false unless s.prompt == prompt
+          end
+          if src = source
+            next false unless s.sourceContext.try(&.source) == src
+          end
+          true
+        end
+        candidates.first(expected)
+      end
+
+      # Paginate sessions newest-first until we cross `cutoff`. Mirrors the
+      # cutoff-aware pagination in `cjules ls`. Network/API/parse errors are
+      # silently swallowed so the caller can surface the *original* submission
+      # error; programmer errors still propagate.
+      private def fetch_sessions_since(client : Client, cutoff : Time) : Array(Models::Session)
+        result = [] of Models::Session
+        begin
+          token : String? = nil
+          loop do
+            page = API::Sessions.list_page(client, 100, token)
+            if items = page.sessions
+              items.each do |sess|
+                if ct = sess.createTime
+                  begin
+                    return result if Time.parse_rfc3339(ct) < cutoff
+                  rescue
+                    next
+                  end
+                else
+                  next
+                end
+                result << sess
+              end
+            end
+            token = page.nextPageToken
+            break if token.nil? || token.empty?
+          end
+        rescue Client::APIError | Socket::Error | IO::Error | JSON::ParseException
+          # Reconciliation lookup failed — fall through with whatever we
+          # gathered so far (likely empty).
+        end
+        result
       end
 
       def build_payload(prompt : String, title : String?, require_approval : Bool, auto_pr : Bool, source : String?, starting_branch : String?) : String

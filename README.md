@@ -84,6 +84,13 @@ cjules new --no-repo "Draft release notes for v0.2.0"
 cjules new --parallel 5 --auto-pr "Refactor the config loader" -f json | jq -r '.[].id' > ids.txt
 ```
 
+> **Burst submissions:** under heavy parallelism the Jules API can return
+> `HTTP 400 Precondition check failed` for a session that did get created
+> server-side. By default `cjules new` reconciles 4xx failures by matching
+> against sessions in the account that were created since the call started
+> (preferring `--title`, falling back to the prompt). Pass
+> `--no-reconcile-on-error` to opt out and surface the raw error.
+
 ### Watching and steering
 
 ```sh

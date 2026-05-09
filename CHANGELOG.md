@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `cjules new` now reconciles 4xx submission failures by looking up sessions created on the account since the call started — works around the Jules API occasionally returning `HTTP 400 Precondition check failed` for a session that *was* created (issue #1). Disable with `--no-reconcile-on-error`.
+
 ## v0.2.0
 
 - Added `cjules retry <ID>` to re-run a session by cloning its prompt, repo, branch, and flags. Supports `--prompt` / `--prompt-file` / `--template` / `--branch` / `--note` / `--with-failure-reason`.
