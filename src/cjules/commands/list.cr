@@ -47,30 +47,6 @@ module Cjules
           cutoff = Time.utc - span
         end
 
-        match = ->(sess : Models::Session) do
-          return false if state_filter && sess.state != state_filter
-          if rf = repo_filter
-            src = sess.sourceContext.try(&.source) || ""
-            return false unless src.includes?(rf)
-          end
-          if c = cutoff
-            if t = sess.createTime
-              begin
-                return false if Time.parse_rfc3339(t) < c
-              rescue
-                return false
-              end
-            else
-              return false
-            end
-          end
-          if q = search
-            combined = "#{sess.prompt} #{sess.title}"
-            return false unless combined.downcase.includes?(q.downcase)
-          end
-          true
-        end
-
         # Paginate; stop early when --since cutoff is exceeded (API returns newest-first),
         # or when we have enough post-filter matches (unless --all).
         filtered = [] of Models::Session
@@ -81,21 +57,20 @@ module Cjules
           if items = page.sessions
             items.each do |sess|
               if c = cutoff
-                if t = sess.createTime
-                  begin
-                    if Time.parse_rfc3339(t) < c
-                      stop_paging = true
-                      next
-                    end
-                  rescue
-                    # malformed timestamp — skip but keep paging
-                  end
+                ct = Util::SessionFilter.parse_create_time(sess)
+                if ct && ct < c
+                  stop_paging = true
+                  next
                 end
               end
-              filtered << sess if match.call(sess)
-              if !all && filtered.size >= limit
-                stop_paging = true
-                break
+              if Util::SessionFilter.matches?(sess,
+                   state: state_filter, repo: repo_filter,
+                   newer_than: cutoff, search: search)
+                filtered << sess
+                if !all && filtered.size >= limit
+                  stop_paging = true
+                  break
+                end
               end
             end
           end

@@ -53,23 +53,8 @@ module Cjules
             end
           end
           matched = all.select do |sess|
-            next false if state && sess.state != state
-            if c = cutoff
-              if t = sess.createTime
-                begin
-                  next false if Time.parse_rfc3339(t) >= c
-                rescue
-                  next false
-                end
-              else
-                next false
-              end
-            end
-            if rf = repo_filter
-              src = sess.sourceContext.try(&.source) || ""
-              next false unless src.includes?(rf)
-            end
-            true
+            Util::SessionFilter.matches?(sess,
+              state: state, repo: repo_filter, older_than: cutoff)
           end
           ids = matched.compact_map { |s| s.id || s.name.try(&.split("/").last) }
         else

@@ -47,6 +47,65 @@ describe Cjules::Util::Duration do
   end
 end
 
+describe Cjules::Util::SessionFilter do
+  sess = ->(state : String?, source : String?, create : String?, prompt : String?, title : String?) do
+    parts = [] of String
+    parts << %("state":#{state.to_json}) if state
+    parts << %("sourceContext":{"source":#{source.to_json}}) if source
+    parts << %("createTime":#{create.to_json}) if create
+    parts << %("prompt":#{prompt.to_json}) if prompt
+    parts << %("title":#{title.to_json}) if title
+    body = parts.empty? ? "" : ",#{parts.join(",")}"
+    Cjules::Models::Session.from_json(%({"id":"x"#{body}}))
+  end
+
+  it "filters by state" do
+    s1 = sess.call("COMPLETED", nil, nil, nil, nil)
+    s2 = sess.call("FAILED", nil, nil, nil, nil)
+    Cjules::Util::SessionFilter.matches?(s1, state: "COMPLETED").should be_true
+    Cjules::Util::SessionFilter.matches?(s2, state: "COMPLETED").should be_false
+  end
+
+  it "filters by repo substring against sourceContext.source" do
+    s = sess.call(nil, "sources/github/foo/bar", nil, nil, nil)
+    Cjules::Util::SessionFilter.matches?(s, repo: "foo/bar").should be_true
+    Cjules::Util::SessionFilter.matches?(s, repo: "baz").should be_false
+  end
+
+  it "newer_than keeps sessions at or after cutoff and rejects missing/malformed times" do
+    now = Time.utc
+    fresh = sess.call(nil, nil, (now - 1.minute).to_rfc3339, nil, nil)
+    stale = sess.call(nil, nil, (now - 2.hours).to_rfc3339, nil, nil)
+    bare = sess.call(nil, nil, nil, nil, nil)
+    bad = sess.call(nil, nil, "not-a-time", nil, nil)
+    cutoff = now - 1.hour
+    Cjules::Util::SessionFilter.matches?(fresh, newer_than: cutoff).should be_true
+    Cjules::Util::SessionFilter.matches?(stale, newer_than: cutoff).should be_false
+    Cjules::Util::SessionFilter.matches?(bare, newer_than: cutoff).should be_false
+    Cjules::Util::SessionFilter.matches?(bad, newer_than: cutoff).should be_false
+  end
+
+  it "older_than keeps sessions strictly before cutoff" do
+    now = Time.utc
+    fresh = sess.call(nil, nil, (now - 1.minute).to_rfc3339, nil, nil)
+    stale = sess.call(nil, nil, (now - 2.hours).to_rfc3339, nil, nil)
+    cutoff = now - 1.hour
+    Cjules::Util::SessionFilter.matches?(fresh, older_than: cutoff).should be_false
+    Cjules::Util::SessionFilter.matches?(stale, older_than: cutoff).should be_true
+  end
+
+  it "search matches across prompt and title, case-insensitive" do
+    s = sess.call(nil, nil, nil, "Build the GIZMO module", "fixup")
+    Cjules::Util::SessionFilter.matches?(s, search: "gizmo").should be_true
+    Cjules::Util::SessionFilter.matches?(s, search: "FIXUP").should be_true
+    Cjules::Util::SessionFilter.matches?(s, search: "absent").should be_false
+  end
+
+  it "returns true when no filter is supplied" do
+    Cjules::Util::SessionFilter.matches?(sess.call("ANY", nil, nil, nil, nil)).should be_true
+  end
+end
+
 describe Cjules::Util::Git do
   it "parses https github URL" do
     Cjules::Util::Git.parse_repo("https://github.com/foo/bar.git").should eq("foo/bar")

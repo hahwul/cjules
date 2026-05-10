@@ -1,5 +1,51 @@
+require "./models"
+
 module Cjules
   module Util
+    module SessionFilter
+      extend self
+
+      # Parse a session's createTime as RFC3339; returns nil on missing/malformed.
+      def parse_create_time(sess : Models::Session) : Time?
+        if t = sess.createTime
+          begin
+            Time.parse_rfc3339(t)
+          rescue
+            nil
+          end
+        end
+      end
+
+      # Single predicate covering the state + repo + cutoff + search filter set
+      # used by `ls`, `rm`, and `prune`. `newer_than` keeps sessions created at
+      # or after the cutoff (i.e. `--since`); `older_than` keeps sessions
+      # created strictly before the cutoff (i.e. `--older-than`). A session
+      # with a missing/malformed createTime fails any cutoff filter.
+      def matches?(sess : Models::Session,
+                   state : String? = nil,
+                   repo : String? = nil,
+                   newer_than : Time? = nil,
+                   older_than : Time? = nil,
+                   search : String? = nil) : Bool
+        return false if state && sess.state != state
+        if rf = repo
+          src = sess.sourceContext.try(&.source) || ""
+          return false unless src.includes?(rf)
+        end
+        if newer_than || older_than
+          ct = parse_create_time(sess)
+          return false unless ct
+          return false if (n = newer_than) && ct < n
+          return false if (o = older_than) && ct >= o
+        end
+        if q = search
+          combined = "#{sess.prompt} #{sess.title}"
+          return false unless combined.downcase.includes?(q.downcase)
+        end
+        true
+      end
+    end
+
     module ID
       extend self
 
