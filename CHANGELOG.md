@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.1
 
 - HTTP client now retries transient failures (5xx, 429, socket/SSL errors) with exponential backoff. GET and DELETE retry up to 3 times; 429 is retried on every method and honors `Retry-After`. POST is excluded from 5xx retry — `cjules new`'s reconcile path covers ambiguous create failures.
 - `cjules watch` no longer dies on a transient blip. The polling loop tolerates 5xx/429 and network errors with a bounded backoff (capped at 60s); 4xx surfaces immediately so bad session IDs still fail fast.
