@@ -41,30 +41,53 @@ module Cjules
 
         seen = Set(String).new
         last_state : String? = nil
+        consecutive_errors = 0
 
         loop do
-          sess = API::Sessions.get(client, sid)
-          activities = API::Activities.list_all(client, sid)
-          activities.each do |a|
-            key = a.id || "#{a.createTime}/#{a.event_type}"
-            next if seen.includes?(key)
-            seen << key
-            print_activity(a)
-          end
+          begin
+            sess = API::Sessions.get(client, sid)
+            activities = API::Activities.list_all(client, sid)
+            activities.each do |a|
+              key = a.id || "#{a.createTime}/#{a.event_type}"
+              next if seen.includes?(key)
+              seen << key
+              print_activity(a)
+            end
 
-          state = sess.state
-          if state != last_state
-            puts "#{Output::Colors.gray("--")} state: #{Output::Colors.state(state || "-")}"
-            handle_state_transition(state, sid, client, auto_approve, reply)
-            last_state = state
-          end
+            state = sess.state
+            if state != last_state
+              puts "#{Output::Colors.gray("--")} state: #{Output::Colors.state(state || "-")}"
+              handle_state_transition(state, sid, client, auto_approve, reply)
+              last_state = state
+            end
 
-          if state && TERMINAL_STATES.includes?(state)
-            break
+            if state && TERMINAL_STATES.includes?(state)
+              break
+            end
+            consecutive_errors = 0
+            sleep interval.seconds
+          rescue ex : Client::APIError
+            # 4xx (e.g. session not found) is a hard error; bubble up.
+            raise ex unless ex.status >= 500 || ex.status == 429
+            consecutive_errors += 1
+            delay = transient_backoff(interval, consecutive_errors)
+            STDERR.puts "#{Output::Colors.gray("--")} server #{ex.status}; retrying in #{delay.total_seconds.to_i}s"
+            sleep delay
+          rescue ex : Socket::Error | IO::Error
+            consecutive_errors += 1
+            delay = transient_backoff(interval, consecutive_errors)
+            STDERR.puts "#{Output::Colors.gray("--")} network error: #{ex.message}; retrying in #{delay.total_seconds.to_i}s"
+            sleep delay
           end
-          sleep interval.seconds
         end
         0
+      end
+
+      # Cap at 60s; double each consecutive failure up to 4 times.
+      private def transient_backoff(interval : Int32, n : Int32) : Time::Span
+        shift = {n - 1, 4}.min
+        secs = interval * (1 << shift)
+        ({secs, 60}.min).seconds
       end
 
       private def handle_state_transition(state : String?, sid : String, client : Client, auto_approve : Bool, reply : Bool)
