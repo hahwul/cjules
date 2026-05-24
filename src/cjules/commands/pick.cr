@@ -82,21 +82,29 @@ module Cjules
       end
 
       private def has_fzf? : Bool
-        Process.run("which", ["fzf"],
-          output: Process::Redirect::Close,
-          error: Process::Redirect::Close).success?
+        begin
+          Process.run("which", ["fzf"],
+            output: Process::Redirect::Close,
+            error: Process::Redirect::Close).success?
+        rescue Exception
+          false
+        end
       end
 
       private def run_fzf(input : String) : String?
         captured = IO::Memory.new
         in_io = IO::Memory.new(input)
-        status = Process.run("fzf", ["--no-sort", "--ansi"],
-          input: in_io,
-          output: captured,
-          error: Process::Redirect::Inherit)
-        return nil unless status.success?
-        s = captured.to_s.strip
-        s.empty? ? nil : s
+        begin
+          status = Process.run("fzf", ["--no-sort", "--ansi"],
+            input: in_io,
+            output: captured,
+            error: Process::Redirect::Inherit)
+          return nil unless status.success?
+          s = captured.to_s.strip
+          s.empty? ? nil : s
+        rescue Exception
+          nil
+        end
       end
     end
   end

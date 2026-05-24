@@ -369,7 +369,7 @@ describe Cjules::Commands::New do
       recent = [
         sess.call("a", "batch 1", "p", "sources/github/o/r"),
         sess.call("b", "batch 1", "p", "sources/github/o/r"),
-        sess.call("c", "other",   "p", "sources/github/o/r"),
+        sess.call("c", "other", "p", "sources/github/o/r"),
       ]
       claimed = [sess.call("a", "batch 1", "p", "sources/github/o/r")]
       out = Cjules::Commands::New.match_recovered(recent, "batch 1", "p", "sources/github/o/r", claimed, 5)
@@ -379,7 +379,7 @@ describe Cjules::Commands::New do
     it "falls back to exact prompt match when title is nil" do
       recent = [
         sess.call("a", nil, "hello world", nil),
-        sess.call("b", nil, "different",   nil),
+        sess.call("b", nil, "different", nil),
       ]
       out = Cjules::Commands::New.match_recovered(recent, nil, "hello world", nil, none, 5)
       out.map(&.id).should eq(["a"])
@@ -553,6 +553,26 @@ describe Cjules::Config do
       with_isolated_home do
         Dir.mkdir_p(File.dirname(Cjules::Config.path))
         File.write(Cjules::Config.path, "::not yaml::\n  !!! garbage")
+        loaded = Cjules::Config.load
+        loaded.accounts.should be_empty
+        loaded.current.should be_nil
+      end
+    end
+
+    it "treats completely empty config file as empty config without crashing" do
+      with_isolated_home do
+        Dir.mkdir_p(File.dirname(Cjules::Config.path))
+        File.write(Cjules::Config.path, "")
+        loaded = Cjules::Config.load
+        loaded.accounts.should be_empty
+        loaded.current.should be_nil
+      end
+    end
+
+    it "treats scalar-only config file as empty config without crashing" do
+      with_isolated_home do
+        Dir.mkdir_p(File.dirname(Cjules::Config.path))
+        File.write(Cjules::Config.path, "hello")
         loaded = Cjules::Config.load
         loaded.accounts.should be_empty
         loaded.current.should be_nil

@@ -67,31 +67,33 @@ module Cjules
       if File.exists?(file)
         begin
           data = YAML.parse(File.read(file))
-          if base = nonempty(data["api_base"]?)
-            cfg.api_base = base
-          end
-          cfg.default_repo = nonempty(data["default_repo"]?)
-          cfg.default_branch = nonempty(data["default_branch"]?)
-          cfg.current = nonempty(data["current"]?)
+          if data.as_h?
+            if base = nonempty(data["api_base"]?)
+              cfg.api_base = base
+            end
+            cfg.default_repo = nonempty(data["default_repo"]?)
+            cfg.default_branch = nonempty(data["default_branch"]?)
+            cfg.current = nonempty(data["current"]?)
 
-          if accounts = data["accounts"]?
-            if h = accounts.as_h?
-              h.each do |k, v|
-                key = k.as_s? || next
-                val = v.as_s? || next
-                next if key.empty? || val.empty?
-                cfg.accounts[key] = val
+            if accounts = data["accounts"]?
+              if h = accounts.as_h?
+                h.each do |k, v|
+                  key = k.as_s? || next
+                  val = v.as_s? || next
+                  next if key.empty? || val.empty?
+                  cfg.accounts[key] = val
+                end
               end
             end
-          end
 
-          # Backward-compat: legacy single api_key.
-          if legacy = nonempty(data["api_key"]?)
-            cfg.accounts["default"] = legacy unless cfg.accounts.has_key?("default")
-            cfg.current ||= "default"
+            # Backward-compat: legacy single api_key.
+            if legacy = nonempty(data["api_key"]?)
+              cfg.accounts["default"] = legacy unless cfg.accounts.has_key?("default")
+              cfg.current ||= "default"
+            end
           end
-        rescue YAML::ParseException
-          # treat corrupt config as empty
+        rescue Exception
+          # treat corrupt or unreadable config as empty
         end
       end
 
@@ -110,36 +112,40 @@ module Cjules
 
     def save
       file = self.class.path
-      Dir.mkdir_p(File.dirname(file))
-      File.open(file, "w", perm: 0o600) do |io|
-        YAML.build(io) do |y|
-          y.mapping do
-            y.scalar "api_base"
-            y.scalar @api_base
-            if v = @default_repo
-              y.scalar "default_repo"
-              y.scalar v
-            end
-            if v = @default_branch
-              y.scalar "default_branch"
-              y.scalar v
-            end
-            if v = @current
-              y.scalar "current"
-              y.scalar v
-            end
-            y.scalar "accounts"
+      begin
+        Dir.mkdir_p(File.dirname(file))
+        File.open(file, "w", perm: 0o600) do |io|
+          YAML.build(io) do |y|
             y.mapping do
-              @accounts.each do |k, val|
-                y.scalar k
-                y.scalar val
+              y.scalar "api_base"
+              y.scalar @api_base
+              if v = @default_repo
+                y.scalar "default_repo"
+                y.scalar v
+              end
+              if v = @default_branch
+                y.scalar "default_branch"
+                y.scalar v
+              end
+              if v = @current
+                y.scalar "current"
+                y.scalar v
+              end
+              y.scalar "accounts"
+              y.mapping do
+                @accounts.each do |k, val|
+                  y.scalar k
+                  y.scalar val
+                end
               end
             end
           end
         end
+        # Tighten perms on existing files too.
+        File.chmod(file, 0o600)
+      rescue ex : Exception
+        STDERR.puts "warning: failed to save config to #{file}: #{ex.message}"
       end
-      # Tighten perms on existing files too.
-      File.chmod(file, 0o600)
     end
 
     def add_account(alias_name : String, key : String) : Nil

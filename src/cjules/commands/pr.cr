@@ -50,7 +50,11 @@ module Cjules
 
         if open_browser
           opener = {% if flag?(:darwin) %} "open" {% else %} "xdg-open" {% end %}
-          Process.run(opener, [url], output: Process::Redirect::Close, error: Process::Redirect::Close)
+          begin
+            Process.run(opener, [url], output: Process::Redirect::Close, error: Process::Redirect::Close)
+          rescue ex : Exception
+            STDERR.puts "warning: failed to open browser with #{opener}: #{ex.message}"
+          end
         end
         0
       end

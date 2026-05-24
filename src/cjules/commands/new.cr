@@ -139,6 +139,20 @@ module Cjules
         end
         if failures > 0
           STDERR.puts "warning: #{failures} of #{parallel} session(s) failed to create"
+          exceptions = results.compact_map { |r| r.is_a?(Exception) ? r : nil }
+          error_msgs = exceptions.map do |e|
+            case e
+            when Client::APIError
+              "API error (HTTP #{e.status}): #{e.detail}"
+            when Socket::Error | IO::Error
+              "network error: #{e.message}"
+            when JSON::ParseException
+              "malformed JSON: #{e.message}"
+            else
+              e.message || "unknown error"
+            end
+          end.uniq
+          error_msgs.each { |msg| STDERR.puts "  - #{msg}" }
           return 1
         end
         0

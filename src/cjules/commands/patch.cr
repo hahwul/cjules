@@ -83,13 +83,17 @@ module Cjules
 
         if apply
           tmp = File.tempfile("cjules-", ".patch")
+          status : Process::Status? = nil
           begin
             File.write(tmp.path, text)
             status = Process.run("git", ["apply", tmp.path], output: STDOUT, error: STDERR)
+          rescue ex : Exception
+            STDERR.puts "error: failed to execute 'git apply' (is git installed?): #{ex.message}"
+            return 1
           ensure
             tmp.delete
           end
-          unless status.success?
+          if status.nil? || !status.success?
             STDERR.puts "git apply failed"
             return 1
           end

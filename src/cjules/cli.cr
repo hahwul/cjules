@@ -111,7 +111,7 @@ module Cjules
       rescue e : Client::APIError
         STDERR.puts "API error (HTTP #{e.status}): #{e.detail}"
         1
-      rescue e : Socket::Error | IO::Error
+      rescue e : Socket::Error | IO::Error | OpenSSL::SSL::Error
         STDERR.puts "network error: #{e.message}"
         1
       rescue e : JSON::ParseException
