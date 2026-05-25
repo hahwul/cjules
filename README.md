@@ -24,7 +24,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
 - **Pick** — `cjules pick` (uses `fzf` if available) with `--action show|watch|pr|delete`.
 - **Retry** — `cjules retry <id>` re-runs a session by cloning its prompt, repo, branch, and flags; `--with-failure-reason` carries the original failure message into the new prompt.
-- **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and reference them via `--template <name>` on `new` or `retry`.
+- **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and reference them via `--template <name>` on `new` or `retry`. Templates support dynamic variables: `{{.File "path"}}`, `{{.GitDiff}}`, and `{{.Var "name"}}` for powerful prompt generation.
 
 > **Heads up:** the Jules API is currently labelled `v1alpha`. Schema and
 > behaviour can change without notice. Pin a release of cjules in scripts you
@@ -174,6 +174,11 @@ cjules ls --state FAILED --limit 1 -f jsonl | jq -r .id | xargs cjules retry --w
 Drop `*.md` or `*.txt` files into `~/.config/cjules/templates/` and reference
 them by filename. Templates are looked up there by short name.
 
+Templates now support **dynamic variables** for powerful prompt generation:
+- `{{.File "path"}}` — Insert file contents
+- `{{.GitDiff}}` — Insert current git diff
+- `{{.Var "name"}}` — Insert user-defined variables passed via `--var`
+
 ```sh
 # See what's available and where they live
 cjules templates ls
@@ -184,8 +189,30 @@ cjules templates show bugfix       # print body
 cjules new --template bugfix
 cjules new --template bugfix --auto-pr --branch hotfix
 
+# Use templates with variables
+cjules new --template refactor --var file=parser.cr --var priority=high
+
 # Or as the prompt for a retry
 cjules retry <session-id> --template bugfix
+```
+
+**Example template** (`~/.config/cjules/templates/refactor.md`):
+```markdown
+Please refactor the following code:
+
+[Code]
+{{.File "src/parser.cr"}}
+
+[Notes]
+{{.Var "note"}}
+
+[Current Changes]
+{{.GitDiff}}
+```
+
+**Usage:**
+```sh
+cjules new --template refactor --var note="Improve error handling"
 ```
 
 ### Bulk cleanup with `prune`
