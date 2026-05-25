@@ -36,7 +36,7 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 | `cjules msg <ID> <TEXT\|->` | Send a follow-up message into an active session. |
 | `cjules approve <ID>` | Approve a plan. Aborts unless state is `AWAITING_PLAN_APPROVAL`; pass `--force` to skip the precheck. |
 | `cjules logs <ID> [-f md\|json\|text]` | Export the full activity log. Markdown is the default and the most useful format for a human report. |
-| `cjules patch <ID> [--list\|--apply\|--index N]` | Print, list, or `git apply` the session's gitPatch artifacts. |
+| `cjules patch <ID> [--list\|--apply\|--interactive\|--index N]` | Print, list, `git apply`, or interactively apply the session's gitPatch artifacts. |
 | `cjules pr <ID> [--open]` | Print (or open) the pull-request URL produced by the session. |
 | `cjules rm <ID...>` or `cjules rm --state X --older-than Y --repo R` | Delete sessions individually or in bulk. Confirmation unless `-y`. |
 | `cjules sources ls / get <ID>` | Inspect connected GitHub repos. |
@@ -89,6 +89,7 @@ cjules rm --state FAILED --older-than 7d -y          # non-interactive
 cjules patch <id> --list           # see all patches with their base commits
 cjules patch <id> --index 0        # print the first patch body
 cjules patch <id> --apply          # `git apply` the latest patch in CWD
+cjules patch <id> -i               # interactively select hunks to apply
 ```
 
 **Live-tail a running session**
@@ -109,6 +110,7 @@ echo "please also update the README" | cjules msg <id> -
 - **`approve`** is a no-op on completed sessions at the API level; cjules now precheckes the state and aborts early. Use `--force` only if you really want to call `approvePlan` regardless.
 - **`watch`** polls; it does not use server push. Default interval is 3s. Increase for long sessions.
 - **`patch --apply`** runs `git apply` in the current working directory. Run it from the right repo / branch.
+- **`patch --interactive`** requires a TTY (it prompts per hunk). Use `--apply` in scripts instead.
 - **Bulk `rm` filters require either `--state`, `--older-than`, or `--repo`** — calling `cjules rm` with no args and no filters is rejected.
 - **Prompt input** for `new` and `msg` accepts a positional arg, `--file PATH`, `-` for stdin, or piped stdin (when neither tty nor explicit). When stdin isn't a tty, the alias/key prompts in `login` are disabled — pass `--alias` and `--key`/`--stdin` explicitly.
 - **`--repo` filter** matches the source string with `String#includes?`. `hahwul/hwaro-examples` will match `sources/github/hahwul/hwaro-examples`.

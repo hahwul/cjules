@@ -18,7 +18,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Parallel sessions** — `cjules new --parallel N` runs N sessions with the same prompt.
 - **Watch** — `cjules watch <id>` tails activities; `--auto-approve --reply` for hands-free runs.
 - **Prune** — filter by state, age, repo, or `--all`; dry-run by default, `-y` to apply.
-- **Patch & PR** — `cjules patch <id> --apply` runs `git apply`; `cjules pr <id> --open` opens the PR.
+- **Patch & PR** — `cjules patch <id> --apply` (or `-i` for interactive hunks) runs `git apply`; `cjules pr <id> --open` opens the PR.
 - **Logs** — `cjules logs <id> -f md` for a full report, `--bash` for shell transcripts, `--save-media` for artifacts.
 - **Pipe-friendly** — `-f table|json|jsonl|yaml` on every list command.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
@@ -131,6 +131,7 @@ cjules pick --action pr           # pick → print PR URL
 # Inspect or apply the resulting patch locally
 cjules patch <session-id> --list
 cjules patch <session-id> --apply
+cjules patch <session-id> --interactive  # select hunks (like `git add -p`)
 
 # Print or open the PR
 cjules pr <session-id>

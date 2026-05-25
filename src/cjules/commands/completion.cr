@@ -44,7 +44,7 @@ module Cjules
             'plan:Show generated plans'
             'logs:Export activity log'
             'activity:Show a single activity'
-            'patch:Print or apply gitPatch'
+            'patch:Print/apply gitPatch (supports -i)'
             'pr:Print PR URL'
             'pick:Interactive picker'
             'retry:Re-run a session'
@@ -79,7 +79,7 @@ module Cjules
         complete -c cjules -n "__fish_use_subcommand" -a "plan"     -d "Show generated plans"
         complete -c cjules -n "__fish_use_subcommand" -a "logs"     -d "Export activity log"
         complete -c cjules -n "__fish_use_subcommand" -a "activity" -d "Show a single activity"
-        complete -c cjules -n "__fish_use_subcommand" -a "patch"    -d "Print or apply gitPatch"
+        complete -c cjules -n "__fish_use_subcommand" -a "patch"    -d "Print/apply gitPatch (supports -i)"
         complete -c cjules -n "__fish_use_subcommand" -a "pr"       -d "Print PR URL"
         complete -c cjules -n "__fish_use_subcommand" -a "pick"     -d "Interactive picker"
         complete -c cjules -n "__fish_use_subcommand" -a "retry"    -d "Re-run a session"

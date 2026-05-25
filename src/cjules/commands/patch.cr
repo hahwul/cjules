@@ -4,6 +4,7 @@ require "../config"
 require "../client"
 require "../api"
 require "../util"
+require "../unidiff"
 
 module Cjules
   module Commands
@@ -12,13 +13,18 @@ module Cjules
 
       def run(args : Array(String)) : Int32
         apply = false
+        interactive = false
         index : Int32? = nil
         list_only = false
         positional = [] of String
 
         parser = OptionParser.new do |p|
-          p.banner = "Usage: cjules patch <ID> [--apply] [--index N] [--list]"
+          p.banner = "Usage: cjules patch <ID> [--apply|--interactive] [--index N] [--list]"
           p.on("--apply", "Apply with `git apply` in current directory") { apply = true }
+          p.on("-i", "--interactive", "Interactively select hunks to apply (like `git add -p`)") do
+            interactive = true
+            apply = true
+          end
           p.on("--index N", "Pick specific patch (default: last)") { |v| index = v.to_i }
           p.on("--list", "List all patches with metadata, do not print body") { list_only = true }
           p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
@@ -82,6 +88,23 @@ module Cjules
         end
 
         if apply
+          if interactive
+            unless STDIN.tty? && STDOUT.tty?
+              STDERR.puts "error: --interactive requires a TTY"
+              return 2
+            end
+            result = Unidiff::Interactive.select(text, input: STDIN, output: STDERR, display: STDOUT)
+            if result.selected_patch.empty?
+              if result.quit_early
+                STDERR.puts "aborted"
+                return 1
+              end
+              puts "no hunks selected"
+              return 0
+            end
+            text = result.selected_patch
+          end
+
           tmp = File.tempfile("cjules-", ".patch")
           status : Process::Status? = nil
           begin
