@@ -6,6 +6,8 @@ require "../src/cjules/output/colors"
 require "../src/cjules/output/table"
 require "../src/cjules/config"
 require "../src/cjules/commands/new"
+require "../src/cjules/template_renderer"
+require "file_utils"
 
 describe Cjules::Util::ID do
   it "strips sessions/ prefix" do
@@ -634,6 +636,101 @@ describe Cjules::Config do
     it "returns false for unknown alias" do
       cfg = Cjules::Config.new(accounts: {"x" => "K"})
       cfg.remove_account("nope").should be_false
+    end
+  end
+end
+describe Cjules::TemplateRenderer do
+  describe ".parse_vars" do
+    it "parses key=value pairs" do
+      vars = Cjules::TemplateRenderer.parse_vars(["foo=bar", "baz=qux"])
+      vars.should eq({"foo" => "bar", "baz" => "qux"})
+    end
+
+    it "handles values with = signs" do
+      vars = Cjules::TemplateRenderer.parse_vars(["url=http://example.com?a=1"])
+      vars.should eq({"url" => "http://example.com?a=1"})
+    end
+
+    it "handles empty values" do
+      vars = Cjules::TemplateRenderer.parse_vars(["empty="])
+      vars.should eq({"empty" => ""})
+    end
+
+    it "warns and skips malformed arguments" do
+      vars = Cjules::TemplateRenderer.parse_vars(["good=value", "bad_no_equals", "another=ok"])
+      vars.should eq({"good" => "value", "another" => "ok"})
+    end
+  end
+
+  describe ".render" do
+    it "returns unchanged template when no directives present" do
+      template = "Hello world"
+      Cjules::TemplateRenderer.render(template).should eq("Hello world")
+    end
+
+    it "renders {{.Var}} directives with provided variables" do
+      template = "Hello {{.Var \"name\"}}, you are {{.Var \"age\"}} years old"
+      vars = {"name" => "Alice", "age" => "30"}
+      result = Cjules::TemplateRenderer.render(template, vars)
+      result.should eq("Hello Alice, you are 30 years old")
+    end
+
+    it "renders {{.Var}} with single quotes" do
+      template = "Hello {{.Var 'name'}}"
+      vars = {"name" => "Bob"}
+      result = Cjules::TemplateRenderer.render(template, vars)
+      result.should eq("Hello Bob")
+    end
+
+    it "replaces undefined variables with placeholder" do
+      template = "Value: {{.Var \"missing\"}}"
+      result = Cjules::TemplateRenderer.render(template)
+      result.should eq("Value: [undefined variable: missing]")
+    end
+
+    it "renders {{.File}} directives with existing files" do
+      with_isolated_home do |tmp|
+        test_file = File.join(tmp, "test.txt")
+        File.write(test_file, "File contents here")
+        
+        template = "Content: {{.File \"#{test_file}\"}}"
+        result = Cjules::TemplateRenderer.render(template)
+        result.should eq("Content: File contents here")
+      end
+    end
+
+    it "handles missing files gracefully" do
+      template = "Content: {{.File \"/nonexistent/file.txt\"}}"
+      result = Cjules::TemplateRenderer.render(template)
+      result.should eq("Content: [file not found: /nonexistent/file.txt]")
+    end
+
+    it "renders {{.GitDiff}} when git is available and has changes" do
+      # This test is environment-dependent, so we'll just check the directive is processed
+      template = "Changes:\n{{.GitDiff}}"
+      result = Cjules::TemplateRenderer.render(template)
+      # Should either contain diff output or a placeholder message
+      result.should start_with("Changes:\n")
+      result.should_not contain("{{.GitDiff}}")
+    end
+
+    it "handles multiple directives in one template" do
+      with_isolated_home do |tmp|
+        test_file = File.join(tmp, "data.txt")
+        File.write(test_file, "DATA")
+        
+        template = "Name: {{.Var \"name\"}}\nFile: {{.File \"#{test_file}\"}}\nAge: {{.Var \"age\"}}"
+        vars = {"name" => "Charlie", "age" => "25"}
+        result = Cjules::TemplateRenderer.render(template, vars)
+        result.should eq("Name: Charlie\nFile: DATA\nAge: 25")
+      end
+    end
+
+    it "preserves template content around directives" do
+      template = "Before {{.Var \"x\"}} middle {{.Var \"y\"}} after"
+      vars = {"x" => "X", "y" => "Y"}
+      result = Cjules::TemplateRenderer.render(template, vars)
+      result.should eq("Before X middle Y after")
     end
   end
 end

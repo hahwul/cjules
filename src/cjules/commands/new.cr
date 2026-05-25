@@ -27,6 +27,7 @@ module Cjules
         output = "text"
         reconcile_on_error = true
         positional = [] of String
+        var_args = [] of String
 
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules new [PROMPT|-] [options]"
@@ -37,6 +38,7 @@ module Cjules
           p.on("--title TITLE", "Session title") { |v| title = v }
           p.on("--file PATH", "Read prompt from file") { |v| file = v }
           p.on("--template NAME", "Use a saved prompt template (see `cjules templates`)") { |v| template_name = v }
+          p.on("--var KEY=VALUE", "Define a template variable (can be used multiple times)") { |v| var_args << v }
           p.on("--auto-pr", "Set automationMode=AUTO_CREATE_PR") { auto_pr = true }
           p.on("--require-approval", "Require explicit plan approval") { require_approval = true }
           p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = v.to_i }
@@ -67,7 +69,11 @@ module Cjules
         end
 
         prompt_arg = positional[0]?
-        prompt = Util::PromptInput.resolve(prompt_arg, file)
+
+        # Parse template variables if provided
+        vars = var_args.empty? ? nil : TemplateRenderer.parse_vars(var_args)
+
+        prompt = Util::PromptInput.resolve(prompt_arg, file, vars)
 
         cfg = Config.load
 

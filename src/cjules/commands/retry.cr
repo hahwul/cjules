@@ -22,12 +22,14 @@ module Cjules
         with_failure_reason = false
         output = "text"
         positional = [] of String
+        var_args = [] of String
 
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules retry <ID> [options]"
           p.on("--prompt TEXT", "Replace the original prompt") { |v| prompt_override = v }
           p.on("--prompt-file PATH", "Replace the original prompt from file") { |v| prompt_file = v }
           p.on("--template NAME", "Replace the original prompt with a saved template") { |v| template_name = v }
+          p.on("--var KEY=VALUE", "Define a template variable (can be used multiple times)") { |v| var_args << v }
           p.on("--branch BRANCH", "Override starting branch") { |v| branch_override = v }
           p.on("--note TEXT", "Append a note to the prompt") { |v| note = v }
           p.on("--with-failure-reason", "Append the original session's failure reason as a note") { with_failure_reason = true }
@@ -63,11 +65,17 @@ module Cjules
         client = Client.new(cfg)
         original = API::Sessions.get(client, sid)
 
+        # Parse template variables if provided
+        vars = var_args.empty? ? nil : TemplateRenderer.parse_vars(var_args)
+
         prompt =
           if pf = prompt_file
-            File.read(pf).strip
+            raw = File.read(pf).strip
+            # Apply template rendering if vars is provided
+            vars ? TemplateRenderer.render(raw, vars) : raw
           elsif po = prompt_override
-            po
+            # Apply template rendering if vars is provided
+            vars ? TemplateRenderer.render(po, vars) : po
           else
             original.prompt || ""
           end
