@@ -71,11 +71,11 @@ module Cjules
         prompt =
           if pf = prompt_file
             raw = File.read(pf).strip
-            # Apply template rendering if vars is provided
-            vars ? TemplateRenderer.render(raw, vars) : raw
+            # Always render to support {{.File}}, {{.GitDiff}}, etc.
+            TemplateRenderer.render(raw, vars || TemplateRenderer::Variables.new)
           elsif po = prompt_override
-            # Apply template rendering if vars is provided
-            vars ? TemplateRenderer.render(po, vars) : po
+            # Always render to support {{.File}}, {{.GitDiff}}, etc.
+            TemplateRenderer.render(po, vars || TemplateRenderer::Variables.new)
           else
             original.prompt || ""
           end
