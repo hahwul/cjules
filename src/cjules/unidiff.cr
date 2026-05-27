@@ -204,9 +204,12 @@ module Cjules
       end
 
       private def run_editor(editor : String, path : String, output : IO, display : IO) : Bool
-        # Allow editor commands with flags by going through the shell.
-        cmd = "#{editor} #{shell_escape(path)}"
-        status = Process.run("sh", ["-lc", cmd],
+        # Parse editor command into program + flags and pass path as a separate arg
+        # to avoid shell injection and quoting issues.
+        parts = editor.split
+        program = parts[0]
+        args = parts[1..] + [path]
+        status = Process.run(program, args,
           input: input_for_editor,
           output: display,
           error: output)
@@ -220,10 +223,6 @@ module Cjules
       private def input_for_editor : IO
         # Editor needs the real stdin for interactive control (not the prompt IO).
         STDIN
-      end
-
-      private def shell_escape(s : String) : String
-        "'" + s.gsub("'", %q('\'')).to_s + "'"
       end
 
       private def check_applies?(patch_path : String, output : IO) : Bool
