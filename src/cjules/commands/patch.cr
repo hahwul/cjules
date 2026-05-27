@@ -27,7 +27,7 @@ module Cjules
           end
           p.on("--index N", "Pick specific patch (default: last)") { |v| index = v.to_i }
           p.on("--list", "List all patches with metadata, do not print body") { list_only = true }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

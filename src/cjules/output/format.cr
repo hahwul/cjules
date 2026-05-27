@@ -4,6 +4,7 @@ require "./colors"
 require "./table"
 require "../models"
 require "../util"
+require "../errors"
 
 module Cjules
   module Output
@@ -23,8 +24,7 @@ module Cjules
         when "table", "text"
           render_session_table(list, io)
         else
-          STDERR.puts "error: unknown output format: #{format}"
-          exit 2
+          raise Cjules::UsageError.new("unknown output format: #{format}")
         end
       end
 
@@ -59,8 +59,7 @@ module Cjules
           end
           t.render(io)
         else
-          STDERR.puts "error: unknown output format: #{format}"
-          exit 2
+          raise Cjules::UsageError.new("unknown output format: #{format}")
         end
       end
 

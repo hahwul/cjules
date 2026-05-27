@@ -24,7 +24,7 @@ module Cjules
           p.on("--interval SEC", "Poll interval in seconds (default 3)") { |v| interval = v.to_i }
           p.on("--auto-approve", "Automatically approve plans on AWAITING_PLAN_APPROVAL") { auto_approve = true }
           p.on("--reply", "Prompt on AWAITING_USER_FEEDBACK and send the reply") { reply = true }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

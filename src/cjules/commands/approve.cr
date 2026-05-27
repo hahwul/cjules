@@ -4,6 +4,7 @@ require "../config"
 require "../client"
 require "../api"
 require "../util"
+require "../errors"
 
 module Cjules
   module Commands
@@ -16,16 +17,13 @@ module Cjules
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules approve <ID> [--force]"
           p.on("-f", "--force", "Skip the state precheck and call approvePlan anyway") { force = true }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)
 
         id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
+        raise Cjules::UsageError.new("session ID is required") unless id
         sid = Util::ID.normalize(id)
 
         cfg = Config.load

@@ -5,6 +5,7 @@ require "../client"
 require "../api"
 require "../util"
 require "../output/colors"
+require "../errors"
 
 module Cjules
   module Commands
@@ -28,7 +29,7 @@ module Cjules
           p.on("--older-than DUR", "Bulk: only sessions older than (e.g. 30d)") { |v| older = v }
           p.on("--repo OWNER/REPO", "Bulk filter by repo") { |v| repo_filter = v }
           p.on("-y", "--yes", "Skip confirmation") { yes = true }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)
@@ -39,8 +40,7 @@ module Cjules
         ids : Array(String)
         if state || older || repo_filter
           unless positional.empty?
-            STDERR.puts "error: cannot mix positional IDs with bulk filters"
-            return 2
+            raise Cjules::UsageError.new("cannot mix positional IDs with bulk filters")
           end
           all = API::Sessions.list_all(client)
           cutoff : Time? = nil

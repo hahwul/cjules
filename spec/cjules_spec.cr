@@ -692,7 +692,7 @@ describe Cjules::TemplateRenderer do
       with_isolated_home do |tmp|
         test_file = File.join(tmp, "test.txt")
         File.write(test_file, "File contents here")
-        
+
         template = "Content: {{.File \"#{test_file}\"}}"
         result = Cjules::TemplateRenderer.render(template)
         result.should eq("Content: File contents here")
@@ -706,19 +706,21 @@ describe Cjules::TemplateRenderer do
     end
 
     it "renders {{.GitDiff}} when git is available and has changes" do
-      # This test is environment-dependent, so we'll just check the directive is processed
+      # Note: diff content can legitimately contain the string "{{.GitDiff}}" (e.g. in our own test code),
+      # so we only verify that substitution for *our input template* happened (result changed) and prefix ok.
       template = "Changes:\n{{.GitDiff}}"
       result = Cjules::TemplateRenderer.render(template)
-      # Should either contain diff output or a placeholder message
       result.should start_with("Changes:\n")
-      result.should_not contain("{{.GitDiff}}")
+      result.should_not eq(template) # substitution or processing occurred
+      # Output is either a real diff, a placeholder, or error string from renderer
+      (result.includes?("diff --git") || result.includes?("[no git changes]") || result.includes?("[git diff") || result.includes?("[error running git")).should be_true
     end
 
     it "handles multiple directives in one template" do
       with_isolated_home do |tmp|
         test_file = File.join(tmp, "data.txt")
         File.write(test_file, "DATA")
-        
+
         template = "Name: {{.Var \"name\"}}\nFile: {{.File \"#{test_file}\"}}\nAge: {{.Var \"age\"}}"
         vars = {"name" => "Charlie", "age" => "25"}
         result = Cjules::TemplateRenderer.render(template, vars)
@@ -731,6 +733,89 @@ describe Cjules::TemplateRenderer do
       vars = {"x" => "X", "y" => "Y"}
       result = Cjules::TemplateRenderer.render(template, vars)
       result.should eq("Before X middle Y after")
+    end
+  end
+end
+
+# =============================================================================
+# Client & API layer tests (use vendored WebMock for hermetic HTTP)
+# =============================================================================
+
+describe Cjules::Client do
+  it "parses JSON error bodies for APIError#detail" do
+    err = Cjules::Client::APIError.new(400, %({"error":{"message":"bad request details"}}))
+    err.detail.should eq("bad request details")
+    err.status.should eq(400)
+  end
+
+  it "falls back to raw body when error JSON is absent or malformed" do
+    err1 = Cjules::Client::APIError.new(503, "plain text error")
+    err1.detail.should eq("plain text error")
+
+    err2 = Cjules::Client::APIError.new(500, %({"not":"an-error-wrapper"}))
+    err2.detail.should eq(%({"not":"an-error-wrapper"}))
+
+    err3 = Cjules::Client::APIError.new(429, "")
+    err3.detail.should eq("")
+  end
+end
+
+describe "Client HTTP behavior with WebMock" do
+  it "performs successful GET and returns body" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sessions/abc123", body: %({"id":"abc123","state":"COMPLETED"}))
+
+      client = Cjules::Client.new(cfg)
+      body = client.get("/v1alpha/sessions/abc123")
+      body.should contain("COMPLETED")
+    end
+  end
+
+  it "raises APIError on 4xx responses" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sessions/missing", status: 404, body: %({"error":{"message":"not found"}}))
+
+      client = Cjules::Client.new(cfg)
+      expect_raises(Cjules::Client::APIError, /404/) do
+        client.get("/v1alpha/sessions/missing")
+      end
+    end
+  end
+
+  it "retries on 429 and eventually succeeds" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+
+      attempts = 0
+      WebMock.stub(:get, "https://jules.googleapis.com/v1alpha/sessions/r1").to_return do |_|
+        attempts += 1
+        if attempts <= 2
+          HTTP::Client::Response.new(429, body: "", headers: HTTP::Headers{"Retry-After" => "0"})
+        else
+          HTTP::Client::Response.new(200, body: %({"id":"r1"}))
+        end
+      end
+
+      client = Cjules::Client.new(cfg)
+      body = client.get("/v1alpha/sessions/r1")
+      body.should contain("r1")
+      attempts.should eq(3)
+    end
+  end
+end
+
+describe Cjules::API::Sessions do
+  it "lists sessions via client (stubbed)" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sessions?pageSize=100", body: %({"sessions":[{"id":"s1","state":"QUEUED"}],"nextPageToken":""} ))
+
+      client = Cjules::Client.new(cfg)
+      page = Cjules::API::Sessions.list_page(client, 100)
+      page.sessions.not_nil!.size.should eq(1)
+      page.sessions.not_nil![0].id.should eq("s1")
     end
   end
 end

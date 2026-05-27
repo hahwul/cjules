@@ -274,6 +274,8 @@ cjules completion fish  > ~/.config/fish/completions/cjules.fish
 ```sh
 shards build
 crystal spec
+just lint      # requires shards install (pulls ameba)
+just check     # format check
 ```
 
 ## License

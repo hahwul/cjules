@@ -35,6 +35,12 @@ fix:
 check:
     crystal tool format --check
 
+# Run ameba static linter (requires shards install first).
+[group('development')]
+lint:
+    @[ -f lib/ameba/src/ameba.cr ] || shards install
+    crystal lib/ameba/src/ameba.cr src spec --except Metrics/CyclomaticComplexity --except Metrics/MethodLength
+
 # Run all tests.
 [group('development')]
 test:

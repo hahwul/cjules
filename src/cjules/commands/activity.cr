@@ -19,7 +19,7 @@ module Cjules
           p.banner = "Usage: cjules activity <SESSION_ID> <ACTIVITY_ID> [-f text|json|yaml]"
           p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

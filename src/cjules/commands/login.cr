@@ -23,7 +23,7 @@ module Cjules
           p.on("--stdin", "Read API key from stdin") { from_stdin = true }
           p.on("--activate", "Make this account active (default: only on first login)") { activate = true }
           p.on("--verify", "Test the key against the API before saving") { verify = true }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
         end
         parser.parse(args.dup)
 

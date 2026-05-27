@@ -1,4 +1,5 @@
 require "./version"
+require "./errors"
 require "./config"
 require "./client"
 require "./output/colors"
@@ -95,7 +96,7 @@ module Cjules
         when "pr"                  then Commands::PR.run(argv)
         when "pick"                then Commands::Pick.run(argv)
         when "retry"               then Commands::Retry.run(argv)
-        when "sources"             then Commands::SourcesCmd.run(argv)
+        when "sources"             then Commands::Sources.run(argv)
         when "templates", "tpl"    then Commands::Templates.run(argv)
         when "config"              then Commands::ConfigCmd.run(argv)
         when "login"               then Commands::Login.run(argv)
@@ -117,6 +118,12 @@ module Cjules
       rescue e : JSON::ParseException
         STDERR.puts "error: malformed JSON in API response: #{e.message}"
         1
+      rescue e : Cjules::ConfigError
+        STDERR.puts "error: #{e.message}"
+        1
+      rescue e : Cjules::UsageError
+        STDERR.puts "error: #{e.message}"
+        2
       end
     end
 

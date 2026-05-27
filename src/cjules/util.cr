@@ -1,5 +1,6 @@
 require "./models"
 require "./template_renderer"
+require "./errors"
 
 module Cjules
   module Util
@@ -135,11 +136,9 @@ module Cjules
                      elsif !STDIN.tty?
                        piped = STDIN.gets_to_end.strip
                        return piped unless piped.empty?
-                       STDERR.puts "error: prompt is required (provide as argument, --file, or stdin)"
-                       exit 2
+                       raise Cjules::UsageError.new("prompt is required (provide as argument, --file, or stdin)")
                      else
-                       STDERR.puts "error: prompt is required (provide as argument, --file, or stdin)"
-                       exit 2
+                       raise Cjules::UsageError.new("prompt is required (provide as argument, --file, or stdin)")
                      end
 
         # Apply template rendering (always render to support {{.File}}, {{.GitDiff}}, etc.)

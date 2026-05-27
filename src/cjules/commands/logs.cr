@@ -23,7 +23,7 @@ module Cjules
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("--bash", "Print bashOutput artifacts only (command/output/exit)") { bash_only = true }
           p.on("--save-media DIR", "Decode media artifacts and save into DIR") { |v| save_media = v }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

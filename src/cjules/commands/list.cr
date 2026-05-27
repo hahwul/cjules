@@ -30,7 +30,7 @@ module Cjules
           p.on("--all", "Fetch all pages, ignore --limit") { all = true }
           p.on("-f FMT", "--format=FMT", "Output format: table, json, yaml, jsonl") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
         end
         parser.parse(args.dup)
 

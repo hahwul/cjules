@@ -174,21 +174,23 @@ module Cjules
     def require_api_key! : String
       key = api_key
       if key.nil? || key.empty?
-        STDERR.puts "error: no Jules API key configured."
-        env_account = ENV["JULES_ACCOUNT"]?
-        if env_account && !env_account.empty? && !@accounts.has_key?(env_account)
-          STDERR.puts "  JULES_ACCOUNT=#{env_account} is set, but no such account is saved."
-          STDERR.puts "  saved accounts: #{@accounts.keys.join(", ")}" unless @accounts.empty?
-          STDERR.puts "  unset the env var or run: cjules login --alias #{env_account}"
-        elsif @accounts.empty?
-          STDERR.puts "  run: cjules login --alias <name>"
-          STDERR.puts "  or set JULES_API_KEY in the environment"
-        else
-          STDERR.puts "  saved accounts: #{@accounts.keys.join(", ")}"
-          STDERR.puts "  run: cjules accounts use <alias>"
-          STDERR.puts "  or set JULES_ACCOUNT=<alias>"
+        msg = String.build do |io|
+          io << "no Jules API key configured."
+          env_account = ENV["JULES_ACCOUNT"]?
+          if env_account && !env_account.empty? && !@accounts.has_key?(env_account)
+            io << "\n  JULES_ACCOUNT=#{env_account} is set, but no such account is saved."
+            io << "\n  saved accounts: #{@accounts.keys.join(", ")}" unless @accounts.empty?
+            io << "\n  unset the env var or run: cjules login --alias #{env_account}"
+          elsif @accounts.empty?
+            io << "\n  run: cjules login --alias <name>"
+            io << "\n  or set JULES_API_KEY in the environment"
+          else
+            io << "\n  saved accounts: #{@accounts.keys.join(", ")}"
+            io << "\n  run: cjules accounts use <alias>"
+            io << "\n  or set JULES_ACCOUNT=<alias>"
+          end
         end
-        exit 1
+        raise Cjules::ConfigError.new(msg)
       end
       key
     end

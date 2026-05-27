@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Internal refactoring: extracted `Help.show_help` to remove duplicated `--help` footer logic across all subcommands. All command help output now routes through the helper.
+- Internal: renamed `Commands::SourcesCmd` → `Commands::Sources` for naming consistency with other command modules.
+- Continued error centralization: several commands now raise `Cjules::UsageError` for argument problems (central handler in `CLI.run` prints + exits with code 2). Reduces per-command boilerplate.
+
 ## v0.2.1
 
 - HTTP client now retries transient failures (5xx, 429, socket/SSL errors) with exponential backoff. GET and DELETE retry up to 3 times; 429 is retried on every method and honors `Retry-After`. POST is excluded from 5xx retry — `cjules new`'s reconcile path covers ambiguous create failures.

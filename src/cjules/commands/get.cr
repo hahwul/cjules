@@ -5,6 +5,7 @@ require "../client"
 require "../api"
 require "../util"
 require "../output/format"
+require "../errors"
 
 module Cjules
   module Commands
@@ -19,16 +20,13 @@ module Cjules
           p.banner = "Usage: cjules get <ID> [options]"
           p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)
 
         id = positional[0]?
-        if id.nil?
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
+        raise Cjules::UsageError.new("session ID is required") if id.nil?
 
         cfg = Config.load
         client = Client.new(cfg)

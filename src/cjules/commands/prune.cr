@@ -38,7 +38,7 @@ module Cjules
           p.on("--repo OWNER/REPO", "Match by repo substring") { |v| repo_filter = v }
           p.on("--all", "Match every session (no filter); requires -y to apply") { all_flag = true }
           p.on("-y", "--apply", "Skip dry-run and delete") { apply = true }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)

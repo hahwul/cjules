@@ -8,7 +8,7 @@ require "../output/format"
 
 module Cjules
   module Commands
-    module SourcesCmd
+    module Sources
       extend self
 
       def run(args : Array(String)) : Int32
@@ -46,7 +46,7 @@ module Cjules
           p.on("-f FMT", "--format=FMT", "Output format: table, json, yaml, jsonl") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
           p.on("--filter EXPR", "AIP-160 filter (e.g. 'name=sources/foo OR name=sources/bar')") { |v| filter = v }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
         end
         parser.parse(args.dup)
         cfg = Config.load
@@ -63,7 +63,7 @@ module Cjules
           p.banner = "Usage: cjules sources get <ID>"
           p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
-          p.on("-h", "--help", "Show help") { puts p; puts Help::GLOBAL_FLAGS; exit 0 }
+          p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)
