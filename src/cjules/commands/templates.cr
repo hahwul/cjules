@@ -67,8 +67,14 @@ module Cjules
           Templates are plain text or markdown files in:
             #{dir}
 
+          Templates support dynamic variables:
+            {{.File "path"}}     - Insert file content
+            {{.GitDiff}}         - Insert git diff output
+            {{.Var "name"}}      - Insert user-defined variable
+
           Use a template with:
             cjules new --template <name>
+            cjules new --template <name> --var key=value
           USAGE
         io.puts Help::GLOBAL_FLAGS
       end

@@ -1,4 +1,5 @@
 require "./models"
+require "./template_renderer"
 
 module Cjules
   module Util
@@ -123,22 +124,26 @@ module Cjules
       extend self
 
       # Resolve prompt text from positional arg, file, or stdin.
-      def resolve(arg : String?, file : String? = nil) : String
-        if file
-          return File.read(file).strip
-        end
-        if arg == "-"
-          return STDIN.gets_to_end.strip
-        end
-        if arg && !arg.empty?
-          return arg.strip
-        end
-        if !STDIN.tty?
-          piped = STDIN.gets_to_end.strip
-          return piped unless piped.empty?
-        end
-        STDERR.puts "error: prompt is required (provide as argument, --file, or stdin)"
-        exit 2
+      # If vars is provided, applies template rendering with variable substitution.
+      def resolve(arg : String?, file : String? = nil, vars : TemplateRenderer::Variables? = nil) : String
+        raw_prompt = if file
+                       File.read(file).strip
+                     elsif arg == "-"
+                       STDIN.gets_to_end.strip
+                     elsif arg && !arg.empty?
+                       arg.strip
+                     elsif !STDIN.tty?
+                       piped = STDIN.gets_to_end.strip
+                       return piped unless piped.empty?
+                       STDERR.puts "error: prompt is required (provide as argument, --file, or stdin)"
+                       exit 2
+                     else
+                       STDERR.puts "error: prompt is required (provide as argument, --file, or stdin)"
+                       exit 2
+                     end
+
+        # Apply template rendering (always render to support {{.File}}, {{.GitDiff}}, etc.)
+        TemplateRenderer.render(raw_prompt, vars || TemplateRenderer::Variables.new)
       end
     end
 
