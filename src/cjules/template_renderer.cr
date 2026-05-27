@@ -17,8 +17,11 @@ module Cjules
       # Process {{.File "path"}} directives
       result = process_file_directives(result)
 
-      # Process {{.GitDiff}} directives
-      result = process_git_diff_directives(result)
+      # Process {{.GitDiff}} directives (compute diff once and reuse)
+      if result.includes?("{{.GitDiff}}")
+        diff = get_git_diff
+        result = result.gsub("{{.GitDiff}}", diff)
+      end
 
       # Process {{.Var "name"}} directives
       result = process_var_directives(result, vars)

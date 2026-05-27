@@ -142,12 +142,8 @@ module Cjules
                        exit 2
                      end
 
-        # Apply template rendering if vars is provided
-        if vars
-          TemplateRenderer.render(raw_prompt, vars)
-        else
-          raw_prompt
-        end
+        # Apply template rendering (always render to support {{.File}}, {{.GitDiff}}, etc.)
+        TemplateRenderer.render(raw_prompt, vars || TemplateRenderer::Variables.new)
       end
     end
 
