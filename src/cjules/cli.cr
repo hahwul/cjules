@@ -139,7 +139,7 @@ module Cjules
           plan <ID>           Show the latest generated plan (--all for history)
           logs <ID>           Export full activity log (md/json/text); --bash, --save-media
           activity <SID> <AID> Show a single activity
-          patch <ID>          Print, list, or --apply gitPatch artifacts
+          patch <ID>          Print, list, apply, or interactively apply gitPatch artifacts
           pr <ID>             Print PR URL (--open to launch browser)
           pick                Interactive picker (uses fzf if installed)
           retry <ID>          Re-run a session by cloning its prompt/repo/branch
