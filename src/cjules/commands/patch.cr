@@ -89,7 +89,7 @@ module Cjules
 
         if apply
           if interactive
-            unless STDIN.tty? && STDOUT.tty?
+            unless STDIN.tty? && STDOUT.tty? && STDERR.tty?
               STDERR.puts "error: --interactive requires a TTY"
               return 2
             end
