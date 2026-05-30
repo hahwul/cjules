@@ -76,7 +76,7 @@ module Cjules
           puts ""
           puts "  #{(s.index || 0) + 1}. #{Output::Colors.bold(s.title || "(untitled)")}"
           if d = s.description
-            d.lines.each { |l| puts "     #{l.chomp}" } unless d.empty?
+            d.each_line { |l| puts "     #{l.chomp}" } unless d.empty?
           end
         end
       end

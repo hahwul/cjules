@@ -36,10 +36,11 @@ check:
     crystal tool format --check
 
 # Run ameba static linter (requires shards install first).
+# Rule configuration lives in .ameba.yml so local and CI stay in sync.
 [group('development')]
 lint:
-    @[ -f lib/ameba/src/ameba.cr ] || shards install
-    crystal lib/ameba/src/ameba.cr src spec --except Metrics/CyclomaticComplexity --except Metrics/MethodLength
+    @[ -f bin/ameba ] || shards install
+    bin/ameba
 
 # Run all tests.
 [group('development')]

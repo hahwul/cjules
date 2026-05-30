@@ -16,8 +16,8 @@ describe Cjules::Unidiff do
     chunks = Cjules::Unidiff.chunks(patch)
     chunks.size.should eq(2)
     chunks[0].lines.first.should start_with("diff --git a/foo.txt b/foo.txt")
-    chunks[0].lines.any? { |l| l.starts_with?("@@ -0,0 +1,2 @@") }.should be_true
-    chunks[1].lines.any? { |l| l.starts_with?("@@ -10,0 +12,1 @@") }.should be_true
+    chunks[0].lines.any?(&.starts_with?("@@ -0,0 +1,2 @@")).should be_true
+    chunks[1].lines.any?(&.starts_with?("@@ -10,0 +12,1 @@")).should be_true
   end
 
   it "treats no-@@ sections as one chunk" do
@@ -28,7 +28,7 @@ describe Cjules::Unidiff do
     PATCH
     chunks = Cjules::Unidiff.chunks(patch)
     chunks.size.should eq(1)
-    chunks[0].lines.any? { |l| l.includes?("new mode") }.should be_true
+    chunks[0].lines.any?(&.includes?("new mode")).should be_true
   end
 end
 
@@ -91,7 +91,7 @@ describe Cjules::Unidiff::Interactive do
     PATCH
     result, _, _ = run_select.call(patch, "d\n")
     result.selected_patch.empty?.should be_true
-    result.quit_early.should be_false
+    result.quit_early?.should be_false
     result.skipped_chunks.should eq(2)
   end
 
@@ -106,6 +106,6 @@ describe Cjules::Unidiff::Interactive do
     PATCH
     result, _, _ = run_select.call(patch, "q\n")
     result.selected_patch.empty?.should be_true
-    result.quit_early.should be_true
+    result.quit_early?.should be_true
   end
 end

@@ -46,7 +46,7 @@ module Cjules
     end
 
     private def full_path(path : String, query : Hash(String, String)? = nil) : String
-      return path unless query && !query.empty?
+      return path if query.nil? || query.empty?
       params = URI::Params.build do |form|
         query.each { |k, v| form.add(k, v) }
       end

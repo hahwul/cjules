@@ -157,7 +157,7 @@ module Cjules
             else
               e.message || "unknown error"
             end
-          end.uniq
+          end.uniq!
           error_msgs.each { |msg| STDERR.puts "  - #{msg}" }
           return 1
         end
@@ -239,7 +239,7 @@ module Cjules
         JSON.build do |j|
           j.object do
             j.field "prompt", prompt
-            j.field "title", title.not_nil! if title
+            j.field "title", title if title
             j.field "requirePlanApproval", true if require_approval
             j.field "automationMode", "AUTO_CREATE_PR" if auto_pr
             if source && starting_branch

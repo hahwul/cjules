@@ -1,0 +1,30 @@
+# Ameba configuration for cjules.
+# https://github.com/crystal-ameba/ameba
+#
+# Only rules that conflict with deliberate, documented project conventions are
+# disabled here; everything else runs with ameba defaults and is expected to
+# stay clean.
+
+# Locals and instance vars intentionally mirror the Jules REST API JSON field
+# names verbatim (createTime, gitPatch, planGenerated, nextPageToken, ...) so the
+# code maps 1:1 onto the upstream API. snake_case would obscure that mapping.
+Naming/VariableNames:
+  Enabled: false
+
+# Short block parameter names (s, a, l, j, ...) are used idiomatically throughout
+# the command and serialization layers.
+Naming/BlockParameterName:
+  Enabled: false
+
+# The CLI dispatcher and per-command OptionParser flag handlers are inherently
+# branch-heavy; high cyclomatic complexity is expected for argument parsing here
+# and does not indicate a refactor is needed.
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+# not_nil! is used deliberately: flag values are captured inside OptionParser
+# blocks (closures), so Crystal's flow typing cannot narrow them and not_nil! is
+# the idiomatic guard; specs also use it over decoded JSON fixtures whose shape is
+# guaranteed by the fixture.
+Lint/NotNil:
+  Enabled: false

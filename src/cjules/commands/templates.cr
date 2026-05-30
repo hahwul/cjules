@@ -35,7 +35,7 @@ module Cjules
             f
           end
         end
-        names.uniq.sort
+        names.uniq.sort!
       end
 
       def run(args : Array(String)) : Int32

@@ -82,13 +82,11 @@ module Cjules
       end
 
       private def has_fzf? : Bool
-        begin
-          Process.run("which", ["fzf"],
-            output: Process::Redirect::Close,
-            error: Process::Redirect::Close).success?
-        rescue Exception
-          false
-        end
+        Process.run("which", ["fzf"],
+          output: Process::Redirect::Close,
+          error: Process::Redirect::Close).success?
+      rescue Exception
+        false
       end
 
       private def run_fzf(input : String) : String?

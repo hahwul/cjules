@@ -95,7 +95,7 @@ module Cjules
             end
             result = Unidiff::Interactive.select(text, input: STDIN, output: STDERR, display: STDOUT)
             if result.selected_patch.empty?
-              if result.quit_early
+              if result.quit_early?
                 STDERR.puts "aborted"
                 return 1
               end
