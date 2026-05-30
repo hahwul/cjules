@@ -47,8 +47,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: 1.20.0
+      - name: Install dependencies
+        run: shards install
+      # Use the ameba version pinned in shard.lock (respects .ameba.yml) so local
+      # `just lint` and CI agree and an upstream rule change can't break CI silently.
       - name: Run Ameba linter
-        uses: crystal-ameba/github-action@master
+        run: bin/ameba
   build-snapcraft:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

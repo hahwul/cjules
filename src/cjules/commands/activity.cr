@@ -64,7 +64,7 @@ module Cjules
             (plan.steps || [] of Models::PlanStep).each do |s|
               puts "  #{(s.index || 0) + 1}. #{s.title || "(untitled)"}"
               if d = s.description
-                d.lines.each { |l| puts "     #{l.chomp}" } unless d.empty?
+                d.each_line { |l| puts "     #{l.chomp}" } unless d.empty?
               end
             end
           end
@@ -114,7 +114,7 @@ module Cjules
               puts Output::Colors.bold("#{label} (bashOutput):")
               puts "  $ #{bo.command}"
               if out = bo.output
-                out.lines.each { |l| puts "    #{l.chomp}" }
+                out.each_line { |l| puts "    #{l.chomp}" }
               end
               puts "  exit: #{bo.exitCode}"
             elsif med = art.media

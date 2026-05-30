@@ -107,17 +107,15 @@ module Cjules
       end
 
       private def run(cmd : String, *args) : String?
-        begin
-          io = IO::Memory.new
-          status = Process.run(cmd, args.to_a,
-            output: io,
-            error: Process::Redirect::Close)
-          return nil unless status.success?
-          out = io.to_s.strip
-          out.empty? ? nil : out
-        rescue Exception
-          nil
-        end
+        io = IO::Memory.new
+        status = Process.run(cmd, args.to_a,
+          output: io,
+          error: Process::Redirect::Close)
+        return nil unless status.success?
+        out = io.to_s.strip
+        out.empty? ? nil : out
+      rescue Exception
+        nil
       end
     end
 

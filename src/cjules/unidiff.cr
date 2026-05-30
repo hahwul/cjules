@@ -47,7 +47,7 @@ module Cjules
         getter selected_patch : String
         getter selected_chunks : Int32
         getter skipped_chunks : Int32
-        getter quit_early : Bool
+        getter? quit_early : Bool
 
         def initialize(@selected_patch : String, @selected_chunks : Int32, @skipped_chunks : Int32, @quit_early : Bool)
         end
@@ -131,7 +131,8 @@ module Cjules
       private def show_chunk(chunk : Chunk, idx : Int32, total : Int32, display : IO)
         display.puts "\n#{chunk.label} (hunk #{idx}/#{total})"
         display.puts "-" * 72
-        chunk.lines.each { |l| display.puts l }
+        # ameba:disable Performance/ExcessiveAllocations
+        chunk.lines.each { |l| display.puts l } # `lines` is an Array field, not a String
         display.puts "-" * 72
         display.flush
       end
@@ -280,17 +281,17 @@ module Cjules
     end
 
     private def section_label(section : Array(String)) : String
-      diff = section.find { |l| l.starts_with?("diff --git ") }
+      diff = section.find(&.starts_with?("diff --git "))
       if diff
         if m = diff.match(/^diff --git a\/(\S+)\s+b\/(\S+)$/)
           return m[2]
         end
       end
-      plus = section.find { |l| l.starts_with?("+++ ") }
+      plus = section.find(&.starts_with?("+++ "))
       if plus
         return plus.sub(/^\+\+\+\s+/, "")
       end
-      minus = section.find { |l| l.starts_with?("--- ") }
+      minus = section.find(&.starts_with?("--- "))
       if minus
         return minus.sub(/^---\s+/, "")
       end

@@ -87,23 +87,21 @@ module Cjules
     end
 
     private def get_git_diff : String
-      begin
-        io = IO::Memory.new
-        status = Process.run("git", ["diff"], output: io, error: Process::Redirect::Close)
+      io = IO::Memory.new
+      status = Process.run("git", ["diff"], output: io, error: Process::Redirect::Close)
 
-        unless status.success?
-          return "[git diff failed]"
-        end
-
-        diff = io.to_s
-        if diff.empty?
-          return "[no git changes]"
-        end
-
-        diff
-      rescue e : Exception
-        "[error running git diff: #{e.message}]"
+      unless status.success?
+        return "[git diff failed]"
       end
+
+      diff = io.to_s
+      if diff.empty?
+        return "[no git changes]"
+      end
+
+      diff
+    rescue e : Exception
+      "[error running git diff: #{e.message}]"
     end
   end
 end

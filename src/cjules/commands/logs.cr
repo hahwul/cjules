@@ -83,7 +83,7 @@ module Cjules
                 any = true
                 puts "$ #{bo.command}"
                 if out = bo.output
-                  out.lines.each { |l| puts l.chomp }
+                  out.each_line { |l| puts l.chomp }
                 end
                 puts "[exit #{bo.exitCode}]"
                 puts ""
@@ -103,7 +103,7 @@ module Cjules
             arts.each_with_index do |art, idx|
               if med = art.media
                 data = med.data
-                next unless data && !data.empty?
+                next if data.nil? || data.empty?
                 ext = ext_for(med.mimeType)
                 fname =
                   if aid = a.id
@@ -260,14 +260,22 @@ module Cjules
           n = pg.plan.try(&.steps).try(&.size) || 0
           return "plan generated (#{n} step(s))"
         end
-        return "plan #{a.planApproved.not_nil!.planId || "?"} approved" if a.planApproved
-        return "user> #{a.userMessaged.not_nil!.userMessage || ""}" if a.userMessaged
-        return "agent> #{a.agentMessaged.not_nil!.agentMessage || ""}" if a.agentMessaged
+        if pa = a.planApproved
+          return "plan #{pa.planId || "?"} approved"
+        end
+        if um = a.userMessaged
+          return "user> #{um.userMessage || ""}"
+        end
+        if am = a.agentMessaged
+          return "agent> #{am.agentMessage || ""}"
+        end
         if pu = a.progressUpdated
           parts = [pu.title, pu.description].compact.reject(&.empty?)
           return parts.join(" — ")
         end
-        return "failed: #{a.sessionFailed.not_nil!.reason || "(no reason)"}" if a.sessionFailed
+        if sf = a.sessionFailed
+          return "failed: #{sf.reason || "(no reason)"}"
+        end
         return "completed" if a.sessionCompleted
         ""
       end

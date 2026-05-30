@@ -98,7 +98,7 @@ module Cjules
         source = sc.try(&.source)
         starting_branch = branch_override || sc.try(&.githubRepoContext).try(&.startingBranch)
 
-        if source && (starting_branch.nil? || starting_branch.not_nil!.empty?)
+        if source && (starting_branch.nil? || starting_branch.empty?)
           STDERR.puts "error: original session has no startingBranch; pass --branch BRANCH"
           return 2
         end
