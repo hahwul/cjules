@@ -25,6 +25,7 @@ require "./commands/login"
 require "./commands/logout"
 require "./commands/accounts"
 require "./commands/completion"
+require "./commands/dash"
 
 module Cjules
   module CLI
@@ -103,6 +104,7 @@ module Cjules
         when "logout"              then Commands::Logout.run(argv)
         when "accounts", "account" then Commands::Accounts.run(argv)
         when "completion"          then Commands::Completion.run(argv)
+        when "dash", "dashboard"   then Commands::Dash.run(argv)
         else
           STDERR.puts "error: unknown command: #{cmd}"
           STDERR.puts ""
@@ -150,6 +152,7 @@ module Cjules
           pr <ID>             Print PR URL (--open to launch browser)
           pick                Interactive picker (uses fzf if installed)
           retry <ID>          Re-run a session by cloning its prompt/repo/branch
+          dash                Interactive TUI dashboard: list + live logs + approve/msg in-terminal
 
         SOURCES:
           sources ls

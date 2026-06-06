@@ -23,6 +23,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Pipe-friendly** — `-f table|json|jsonl|yaml` on every list command.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
 - **Pick** — `cjules pick` (uses `fzf` if available) with `--action show|watch|pr|delete`.
+- **Dash** — `cjules dash` launches an interactive split-screen TUI: live session list (filterable, active-only), per-session activity tail, and in-place `a` approve / `m` message without leaving the dashboard.
 - **Retry** — `cjules retry <id>` re-runs a session by cloning its prompt, repo, branch, and flags; `--with-failure-reason` carries the original failure message into the new prompt.
 - **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and reference them via `--template <name>` on `new` or `retry`. Templates support dynamic variables: `{{.File "path"}}`, `{{.GitDiff}}`, and `{{.Var "name"}}` for powerful prompt generation.
 
@@ -109,6 +110,27 @@ echo "Please add tests for the error path" | cjules msg <session-id> -
 # Approve a pending plan explicitly
 cjules approve <session-id>
 ```
+
+### Dashboard (TUI)
+
+```sh
+# Full-screen live dashboard for many sessions at once
+cjules dash
+
+# Slower poll if you have lots of sessions
+cjules dash --interval 5
+```
+
+Inside `dash`:
+- `↑` `↓` / `j` `k` — navigate list
+- `a` — approve plan (when AWAITING_PLAN_APPROVAL)
+- `m` — compose and send a message (when awaiting feedback or anytime)
+- `/` — incremental filter on title/prompt/id/repo
+- `f` — toggle active-only view (hides COMPLETED/FAILED/CANCELLED)
+- `r` — force refresh
+- `l` — toggle log tail follow
+- `Tab` — switch focus between list and logs pane
+- `q` or `Ctrl-C` — quit (always restores terminal)
 
 ### Listing, filtering, piping
 

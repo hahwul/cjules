@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `cjules dash` (alias `dashboard`): production-grade interactive TUI for power users. Split view with scrollable/filterable session list (states, ages, repo) on the left and live activity tail for the selected session on the right. In-TUI actions: `a` to approve plans, `m` to compose/send messages, `/` filter, `f` active-only toggle, `r` refresh, `l` follow, Tab focus, vim-style nav, resize-aware, SIGINT-safe terminal restore (alternate screen + raw mode). Implements the core request from issue #6.
 - Internal refactoring: extracted `Help.show_help` to remove duplicated `--help` footer logic across all subcommands. All command help output now routes through the helper.
 - Internal: renamed `Commands::SourcesCmd` → `Commands::Sources` for naming consistency with other command modules.
 - Continued error centralization: several commands now raise `Cjules::UsageError` for argument problems (central handler in `CLI.run` prints + exits with code 2). Reduces per-command boilerplate.

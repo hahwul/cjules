@@ -35,6 +35,7 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 | `cjules watch <ID>` | Tail activities until session reaches a terminal state. `--interval N` to change polling. |
 | `cjules msg <ID> <TEXT\|->` | Send a follow-up message into an active session. |
 | `cjules approve <ID>` | Approve a plan. Aborts unless state is `AWAITING_PLAN_APPROVAL`; pass `--force` to skip the precheck. |
+| `cjules dash` | Interactive TUI dashboard. Live list of sessions + split view of logs for the selected one. Approve (`a`) and message (`m`) without leaving the TUI. |
 | `cjules logs <ID> [-f md\|json\|text]` | Export the full activity log. Markdown is the default and the most useful format for a human report. |
 | `cjules patch <ID> [--list\|--apply\|--interactive\|--index N]` | Print, list, `git apply`, or interactively apply the session's gitPatch artifacts. |
 | `cjules pr <ID> [--open]` | Print (or open) the pull-request URL produced by the session. |
