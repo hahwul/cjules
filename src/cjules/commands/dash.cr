@@ -706,13 +706,19 @@ module Cjules
           STDOUT.print "─" * cols
           STDOUT.puts
 
-          # Two panes side by side for main_h lines
+          # Two panes side by side for main_h lines (row-by-row interleaving for real columns)
           fs = filtered_sessions
-          draw_list_pane(fs, list_w, main_h)
-          STDOUT.print "│"
-          draw_log_pane(fs, log_w, main_h)
+          list_lines = build_list_lines(fs, list_w, main_h)
+          log_lines  = build_log_lines(fs, log_w, main_h)
 
-          # Footer separator
+          (0...main_h).each do |i|
+            STDOUT.print list_lines[i]
+            STDOUT.print "│"
+            STDOUT.puts log_lines[i]
+          end
+
+          # Footer separator (reset any reverse video from last highlighted row)
+          STDOUT.print "\e[0m"
           STDOUT.print "─" * cols
           STDOUT.puts
 
@@ -762,7 +768,8 @@ module Cjules
           STDOUT.puts line2
         end
 
-        private def draw_list_pane(fs : Array(Models::Session), width : Int32, height : Int32)
+        private def build_list_lines(fs : Array(Models::Session), width : Int32, height : Int32) : Array(String)
+          lines = [] of String
           vr = height
           start_i = @list_offset.clamp(0, [fs.size - 1, 0].max)
 
@@ -784,7 +791,7 @@ module Cjules
               row_str = " " * width
             end
 
-            # pad/truncate to width
+            # pad/truncate to width (preserve ANSI for highlight)
             disp_w = Output::Colors.display_width(row_str)
             if disp_w > width
               row_str = Output::Colors.truncate_display(row_str, width)
@@ -793,57 +800,72 @@ module Cjules
             end
 
             if i == @selected_index && @list_focus
-              # reverse video for selected
-              STDOUT.print "\e[7m#{row_str}\e[0m"
-            else
-              STDOUT.print row_str
+              # reverse video for selected (reset at end of this cell)
+              row_str = "\e[7m#{row_str}\e[0m"
             end
-            STDOUT.puts
+
+            lines << row_str
           end
+          lines
         end
 
-        private def draw_log_pane(fs : Array(Models::Session), width : Int32, height : Int32)
+        private def build_log_lines(fs : Array(Models::Session), width : Int32, height : Int32) : Array(String)
+          lines = [] of String
           sid = current_sid
           acts = sid ? (@activities[sid] || [] of Models::Activity) : [] of Models::Activity
 
-          # Header for log pane
-          header = if sid
-                     s = fs[@selected_index]?
-                     " #{s.try(&.short_id) || sid}  [#{Output::Colors.state(s.try(&.state) || "-")}]  (#{acts.size})"
-                   else
-                     " (no selection)"
-                   end
-          header = Output::Colors.truncate_display(header, width)
-          STDOUT.puts header
+          # First line of the log column acts as a mini title bar for the selected session
+          log_title = if sid
+                        s = fs[@selected_index]?
+                        " #{s.try(&.short_id) || sid}  [#{Output::Colors.state(s.try(&.state) || "-")}]  (#{acts.size})"
+                      else
+                        " (no selection)"
+                      end
+          log_title = Output::Colors.truncate_display(log_title, width)
+          disp_w = Output::Colors.display_width(log_title)
+          if disp_w < width
+            log_title += " " * (width - disp_w)
+          end
+          lines << log_title
 
           if acts.empty?
-            (1...height).each { STDOUT.puts " " * width }
-            return
+            (1...height).each { lines << (" " * width) }
+            return lines
           end
 
-          # Determine visible slice
-          # log_scroll=0 means show the tail (latest)
+          # Determine visible slice (reserve 1 line for the title above)
           total = acts.size
           view_h = height - 1
 
-          if @follow || @log_scroll <= 0
-            visible = acts.last(view_h)
-          else
-            # scroll from bottom: offset lines from end
-            end_idx = total - @log_scroll
-            end_idx = view_h if end_idx < view_h
-            start_idx = [end_idx - view_h, 0].max
-            visible = acts[start_idx...end_idx]
-          end
+          visible =
+            if @follow || @log_scroll <= 0
+              acts.last(view_h)
+            else
+              # scroll from bottom: offset lines from end
+              end_idx = total - @log_scroll
+              end_idx = view_h if end_idx < view_h
+              start_idx = [end_idx - view_h, 0].max
+              acts[start_idx...end_idx] || [] of Models::Activity
+            end
 
           visible.each do |a|
             line = format_activity_line(a, width - 1)
-            STDOUT.puts line
+            # pad to width
+            dw = Output::Colors.display_width(line)
+            if dw > width
+              line = Output::Colors.truncate_display(line, width)
+            elsif dw < width
+              line += " " * (width - dw)
+            end
+            lines << line
           end
 
-          # Fill remaining lines
-          missing = view_h - (visible.try(&.size) || 0)
-          missing.times { STDOUT.puts " " * (width - 1) } if missing > 0
+          # Fill remaining lines so we always return exactly `height` lines
+          while lines.size < height
+            lines << (" " * width)
+          end
+
+          lines
         end
 
         private def format_activity_line(a : Models::Activity, max_width : Int32) : String
