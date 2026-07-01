@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- macOS release binaries are now shipped as portable `.tar.gz` archives with bundled OpenSSL libraries, instead of a bare executable linked against Homebrew `openssl@1.1` that failed to launch on clean machines (`dyld: libssl.1.1.dylib not found`).
+
 - Internal refactoring: extracted `Help.show_help` to remove duplicated `--help` footer logic across all subcommands. All command help output now routes through the helper.
 - Internal: renamed `Commands::SourcesCmd` → `Commands::Sources` for naming consistency with other command modules.
 - Continued error centralization: several commands now raise `Cjules::UsageError` for argument problems (central handler in `CLI.run` prints + exits with code 2). Reduces per-command boilerplate.
