@@ -27,8 +27,12 @@ jobs:
         uses: crystal-lang/install-crystal@v1
       - name: Checkout source code
         uses: actions/checkout@v6
+      # --production (= --frozen --without-development) so a release build does
+      # not compile the linter. ameba's postinstall is the only reason this
+      # step can fail, and a dev-only dependency that no longer builds against
+      # the toolchain must not be able to block shipping a binary.
       - name: Install dependencies
-        run: shards install
+        run: shards install --production
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v5
       - name: Set architecture environment variable
