@@ -28,3 +28,25 @@ Metrics/CyclomaticComplexity:
 # guaranteed by the fixture.
 Lint/NotNil:
   Enabled: false
+
+# `read_secret` traps INT only to restore terminal echo during password entry,
+# and resets it in the same method's ensure block. `Process.on_terminate` also
+# installs HUP and TERM handlers, and its counterpart `Process.restore_interrupts!`
+# is just `Signal::INT.reset` -- so migrating would leave stale HUP/TERM handlers
+# that `exit 130` for the rest of the process, with no API to remove them.
+# The INT trap/reset pair is the correct scope here.
+Lint/SignalTrap:
+  Enabled: false
+
+# The bash/zsh/fish completion scripts are verbatim shell payloads. The quoted
+# heredoc markers (<<-'B') keep them out of Crystal's interpolation and escape
+# processing, so a future script gaining a `\` or a `#{` cannot silently change
+# meaning. That the current text happens not to need escaping is not the point.
+Style/HeredocEscape:
+  Enabled: false
+
+# Spec JSON fixtures use %(...) so the embedded double quotes need no escaping,
+# which keeps them readable as the API payloads they mirror. A heredoc would
+# trade that for indentation bookkeeping.
+Style/MultilineStringLiteral:
+  Enabled: false

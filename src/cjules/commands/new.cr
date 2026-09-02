@@ -260,11 +260,9 @@ module Cjules
         ch = Channel(Models::Session | Exception).new(n)
         n.times do
           spawn do
-            begin
-              ch.send(API::Sessions.create(client, body))
-            rescue e
-              ch.send(e)
-            end
+            ch.send(API::Sessions.create(client, body))
+          rescue e
+            ch.send(e)
           end
         end
         results = [] of Models::Session | Exception

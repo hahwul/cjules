@@ -6,7 +6,7 @@ module Cjules
     module ConfigCmd
       extend self
 
-      KEYS = %w(api_base default_repo default_branch)
+      KEYS = %w[api_base default_repo default_branch]
 
       def run(args : Array(String)) : Int32
         sub = args.first?

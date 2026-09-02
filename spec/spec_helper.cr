@@ -28,7 +28,7 @@ end
 def with_isolated_home(&)
   tmp = File.tempname("cjules-spec")
   Dir.mkdir_p(tmp)
-  keys = %w(HOME JULES_ACCOUNT JULES_API_KEY JULES_API_BASE)
+  keys = %w[HOME JULES_ACCOUNT JULES_API_KEY JULES_API_BASE]
   saved = keys.map { |k| {k, ENV[k]?} }.to_h
   keys.each { |k| ENV.delete(k) }
   ENV["HOME"] = tmp

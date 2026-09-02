@@ -84,13 +84,11 @@ module Cjules
 
         failed = 0
         ids.each do |i|
-          begin
-            API::Sessions.delete(client, i)
-            puts "#{Output::Colors.green("deleted")} #{i}"
-          rescue e : Client::APIError
-            STDERR.puts "#{Output::Colors.red("failed")}  #{i}: #{e.detail}"
-            failed += 1
-          end
+          API::Sessions.delete(client, i)
+          puts "#{Output::Colors.green("deleted")} #{i}"
+        rescue e : Client::APIError
+          STDERR.puts "#{Output::Colors.red("failed")}  #{i}: #{e.detail}"
+          failed += 1
         end
         failed == 0 ? 0 : 1
       end

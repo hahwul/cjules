@@ -11,7 +11,7 @@ module Cjules
     module Watch
       extend self
 
-      TERMINAL_STATES = %w(COMPLETED FAILED CANCELLED)
+      TERMINAL_STATES = %w[COMPLETED FAILED CANCELLED]
 
       def run(args : Array(String)) : Int32
         interval = 3
@@ -44,41 +44,39 @@ module Cjules
         consecutive_errors = 0
 
         loop do
-          begin
-            sess = API::Sessions.get(client, sid)
-            activities = API::Activities.list_all(client, sid)
-            activities.each do |a|
-              key = a.id || "#{a.createTime}/#{a.event_type}"
-              next if seen.includes?(key)
-              seen << key
-              print_activity(a)
-            end
-
-            state = sess.state
-            if state != last_state
-              puts "#{Output::Colors.gray("--")} state: #{Output::Colors.state(state || "-")}"
-              handle_state_transition(state, sid, client, auto_approve, reply)
-              last_state = state
-            end
-
-            if state && TERMINAL_STATES.includes?(state)
-              break
-            end
-            consecutive_errors = 0
-            sleep interval.seconds
-          rescue ex : Client::APIError
-            # 4xx (e.g. session not found) is a hard error; bubble up.
-            raise ex unless ex.status >= 500 || ex.status == 429
-            consecutive_errors += 1
-            delay = transient_backoff(interval, consecutive_errors)
-            STDERR.puts "#{Output::Colors.gray("--")} server #{ex.status}; retrying in #{delay.total_seconds.to_i}s"
-            sleep delay
-          rescue ex : Socket::Error | IO::Error
-            consecutive_errors += 1
-            delay = transient_backoff(interval, consecutive_errors)
-            STDERR.puts "#{Output::Colors.gray("--")} network error: #{ex.message}; retrying in #{delay.total_seconds.to_i}s"
-            sleep delay
+          sess = API::Sessions.get(client, sid)
+          activities = API::Activities.list_all(client, sid)
+          activities.each do |a|
+            key = a.id || "#{a.createTime}/#{a.event_type}"
+            next if seen.includes?(key)
+            seen << key
+            print_activity(a)
           end
+
+          state = sess.state
+          if state != last_state
+            puts "#{Output::Colors.gray("--")} state: #{Output::Colors.state(state || "-")}"
+            handle_state_transition(state, sid, client, auto_approve, reply)
+            last_state = state
+          end
+
+          if state && TERMINAL_STATES.includes?(state)
+            break
+          end
+          consecutive_errors = 0
+          sleep interval.seconds
+        rescue ex : Client::APIError
+          # 4xx (e.g. session not found) is a hard error; bubble up.
+          raise ex unless ex.status >= 500 || ex.status == 429
+          consecutive_errors += 1
+          delay = transient_backoff(interval, consecutive_errors)
+          STDERR.puts "#{Output::Colors.gray("--")} server #{ex.status}; retrying in #{delay.total_seconds.to_i}s"
+          sleep delay
+        rescue ex : Socket::Error | IO::Error
+          consecutive_errors += 1
+          delay = transient_backoff(interval, consecutive_errors)
+          STDERR.puts "#{Output::Colors.gray("--")} network error: #{ex.message}; retrying in #{delay.total_seconds.to_i}s"
+          sleep delay
         end
         0
       end

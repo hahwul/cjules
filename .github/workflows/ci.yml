@@ -54,6 +54,12 @@ jobs:
         run: shards install
       # Use the ameba version pinned in shard.lock (respects .ameba.yml) so local
       # `just lint` and CI agree and an upstream rule change can't break CI silently.
+      # ameba 1.7 dropped its `executables:` entry, so it has to be built here
+      # rather than picked up from bin/ after `shards install`.
+      - name: Build Ameba
+        run: |
+          mkdir -p bin
+          crystal build lib/ameba/src/cli.cr -o bin/ameba
       - name: Run Ameba linter
         run: bin/ameba
   build-snapcraft:

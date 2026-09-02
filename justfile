@@ -37,9 +37,12 @@ check:
 
 # Run ameba static linter (requires shards install first).
 # Rule configuration lives in .ameba.yml so local and CI stay in sync.
+# ameba 1.7 dropped its `executables:` entry, so `shards install` no longer
+# drops a binary into bin/ -- build it from the revision shard.lock pins.
 [group('development')]
 lint:
-    @[ -f bin/ameba ] || shards install
+    @[ -f lib/ameba/src/cli.cr ] || shards install
+    @[ -f bin/ameba ] || (mkdir -p bin && crystal build lib/ameba/src/cli.cr -o bin/ameba)
     bin/ameba
 
 # Run all tests.

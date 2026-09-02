@@ -6,7 +6,7 @@ module Cjules
     module Templates
       extend self
 
-      EXTENSIONS = %w(.md .txt)
+      EXTENSIONS = %w[.md .txt]
 
       def dir : String
         File.expand_path("~/.config/cjules/templates", home: true)
@@ -27,8 +27,8 @@ module Cjules
         d = dir
         return [] of String unless Dir.exists?(d)
         names = Dir.entries(d).compact_map do |f|
-          next nil if f.starts_with?(".")
-          next nil unless File.file?(File.join(d, f))
+          next if f.starts_with?(".")
+          next unless File.file?(File.join(d, f))
           if ext = EXTENSIONS.find { |e| f.ends_with?(e) }
             f[0...(f.size - ext.size)]
           else
