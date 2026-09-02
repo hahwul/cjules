@@ -106,7 +106,7 @@ module Cjules
           end
 
           tmp = File.tempfile("cjules-", ".patch")
-          status : Process::Status? = nil
+          status : Process::Status?
           begin
             File.write(tmp.path, text)
             status = Process.run("git", ["apply", tmp.path], output: STDOUT, error: STDERR)

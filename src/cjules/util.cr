@@ -91,7 +91,7 @@ module Cjules
 
       def detect_repo : String?
         url = run("git", "config", "--get", "remote.origin.url")
-        return nil unless url
+        return unless url
         parse_repo(url)
       end
 
@@ -111,7 +111,7 @@ module Cjules
         status = Process.run(cmd, args.to_a,
           output: io,
           error: Process::Redirect::Close)
-        return nil unless status.success?
+        return unless status.success?
         out = io.to_s.strip
         out.empty? ? nil : out
       rescue Exception

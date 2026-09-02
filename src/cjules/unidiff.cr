@@ -177,19 +177,19 @@ module Cjules
         if editor.nil?
           output.puts "error: no editor found (set $EDITOR or $VISUAL)"
           output.flush
-          return nil
+          return
         end
 
         tmp = File.tempfile("cjules-hunk-", ".patch")
         begin
           File.write(tmp.path, chunk.lines.join("\n") + "\n")
           ok = run_editor(editor, tmp.path, output, display)
-          return nil unless ok
+          return unless ok
           edited_text = File.read(tmp.path)
           if edited_text.strip.empty?
             output.puts "edit produced an empty patch; not applying"
             output.flush
-            return nil
+            return
           end
           if check_applies?(tmp.path, output)
             return edited_text.lines.map(&.chomp)

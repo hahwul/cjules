@@ -35,7 +35,7 @@ module Cjules
         if has_fzf?
           lines = sessions.compact_map do |s|
             sid = s.id
-            next nil unless sid
+            next unless sid
             title = (s.title || s.prompt || "").gsub(/\s+/, " ")
             "#{sid[0..11]}\t#{(s.state || "-").ljust(24)}\t#{title[0..80]}"
           end
@@ -97,7 +97,7 @@ module Cjules
             input: in_io,
             output: captured,
             error: Process::Redirect::Inherit)
-          return nil unless status.success?
+          return unless status.success?
           s = captured.to_s.strip
           s.empty? ? nil : s
         rescue Exception

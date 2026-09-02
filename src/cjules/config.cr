@@ -104,9 +104,9 @@ module Cjules
     end
 
     private def self.nonempty(node : YAML::Any?) : String?
-      return nil unless node
+      return unless node
       s = node.as_s?
-      return nil if s.nil? || s.empty?
+      return if s.nil? || s.empty?
       s
     end
 
