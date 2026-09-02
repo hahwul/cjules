@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.3
+
+### Fixed
+- macOS release tarballs are re-signed ad hoc after `install_name_tool` rewrites their dylib load paths. The bundled OpenSSL dylibs were left with a stale signature, and Apple Silicon SIGKILLs any process that maps one, so `cjules-v0.2.2-osx-arm64.tar.gz` could not run at all on Apple Silicon (`zsh: killed cjules`, exit 137). Clearing quarantine did not help: it is a signature check, not Gatekeeper. Packaging now verifies every signature and runs the extracted tarball before publishing it (#20).
+
 ## v0.2.2
 
 ### Fixed
