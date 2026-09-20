@@ -29,16 +29,21 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 
 | Command | Use it for |
 |---|---|
-| `cjules new [PROMPT\|-]` | Create a session. Auto-detects `--repo` from `git remote origin` and `--branch` from `HEAD`. |
+| `cjules new [PROMPT\|-]` | Create a session. Auto-detects `--repo` from `git remote origin` and `--branch` from `HEAD`. Supports `--template NAME` and `--var KEY=VALUE`. |
 | `cjules ls` | List sessions. Filters: `--state`, `--repo`, `--since`, `--search`. Outputs: `-f table\|json\|jsonl\|yaml`. |
 | `cjules get <ID>` | Show one session in full. |
 | `cjules watch <ID>` | Tail activities until session reaches a terminal state. `--interval N` to change polling. |
 | `cjules msg <ID> <TEXT\|->` | Send a follow-up message into an active session. |
 | `cjules approve <ID>` | Approve a plan. Aborts unless state is `AWAITING_PLAN_APPROVAL`; pass `--force` to skip the precheck. |
+| `cjules plan <ID>` | Show the latest generated plan (`--all` for full revision history). |
 | `cjules logs <ID> [-f md\|json\|text]` | Export the full activity log. Markdown is the default and the most useful format for a human report. |
 | `cjules patch <ID> [--list\|--apply\|--interactive\|--index N]` | Print, list, `git apply`, or interactively apply the session's gitPatch artifacts. |
 | `cjules pr <ID> [--open]` | Print (or open) the pull-request URL produced by the session. |
+| `cjules pick` | Interactive session picker (uses `fzf` if installed) with `--action show\|watch\|pr\|delete`. |
+| `cjules retry <ID>` | Re-run a session by cloning prompt, repo, and branch; `--with-failure-reason` appends error notes. |
+| `cjules templates [ls\|show\|path]` | Manage prompt templates in `~/.config/cjules/templates/` with dynamic variable expansion. |
 | `cjules rm <ID...>` or `cjules rm --state X --older-than Y --repo R` | Delete sessions individually or in bulk. Confirmation unless `-y`. |
+| `cjules prune` | Bulk delete with dry-run table preview (`--completed`, `--failed`, `--older-than`, `--repo`, `--all`). `-y` to apply. |
 | `cjules sources ls / get <ID>` | Inspect connected GitHub repos. |
 
 ## Multi-account auth
@@ -80,8 +85,10 @@ cjules logs <id> -f md | less
 
 **Bulk cleanup**
 ```sh
-cjules rm --state COMPLETED --older-than 30d         # asks for confirmation
-cjules rm --state FAILED --older-than 7d -y          # non-interactive
+cjules prune --completed --older-than 30d         # dry-run preview table
+cjules prune --completed --older-than 30d -y      # apply bulk deletion
+cjules rm --state COMPLETED --older-than 30d      # asks for confirmation
+cjules rm --state FAILED --older-than 7d -y       # non-interactive
 ```
 
 **Apply a session's changes locally**
@@ -103,14 +110,29 @@ cjules ls --state AWAITING_USER_FEEDBACK
 echo "please also update the README" | cjules msg <id> -
 ```
 
+**Re-run failed sessions with `retry`**
+```sh
+cjules retry <id>                               # clone context into new session
+cjules retry <id> --with-failure-reason         # feed previous failure back into prompt
+cjules retry <id> --note "Fix the compile error" # append targeted guidance
+```
+
+**Reusable prompt templates**
+```sh
+cjules templates ls                             # list templates in ~/.config/cjules/templates/
+cjules new --template refactor                  # render template as session prompt
+cjules new --template bugfix --var issue=123    # pass dynamic variables
+```
+
 ## Gotchas
 
 - **Session IDs are 20-digit numbers** (e.g. `18077675164109662449`). Pass the *full* ID to commands. Both `sessions/<id>` and bare `<id>` are accepted.
 - **Source IDs use slashes**: `sources/github/<owner>/<repo>` (the `cjules sources ls` ID column shows the slash form). `cjules new --repo OWNER/REPO` maps to that internally.
-- **`approve`** is a no-op on completed sessions at the API level; cjules now precheckes the state and aborts early. Use `--force` only if you really want to call `approvePlan` regardless.
+- **`approve`** is a no-op on completed sessions at the API level; cjules now prechecks the state and aborts early. Use `--force` only if you really want to call `approvePlan` regardless.
 - **`watch`** polls; it does not use server push. Default interval is 3s. Increase for long sessions.
 - **`patch --apply`** runs `git apply` in the current working directory. Run it from the right repo / branch.
 - **`patch --interactive`** requires a TTY (it prompts per hunk). Use `--apply` in scripts instead.
+- **Prompt templates** in `~/.config/cjules/templates/` support dynamic variables: `{{.File "path"}}` to embed file contents, `{{.GitDiff}}` for current git changes, and `{{.Var "name"}}` for user variables passed via `--var name=val`.
 - **Bulk `rm` filters require either `--state`, `--older-than`, or `--repo`** — calling `cjules rm` with no args and no filters is rejected.
 - **Prompt input** for `new` and `msg` accepts a positional arg, `--file PATH`, `-` for stdin, or piped stdin (when neither tty nor explicit). When stdin isn't a tty, the alias/key prompts in `login` are disabled — pass `--alias` and `--key`/`--stdin` explicitly.
 - **`--repo` filter** matches the source string with `String#includes?`. `hahwul/hwaro-examples` will match `sources/github/hahwul/hwaro-examples`.
