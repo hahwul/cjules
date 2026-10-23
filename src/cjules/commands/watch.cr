@@ -4,6 +4,7 @@ require "../config"
 require "../client"
 require "../api"
 require "../util"
+require "../notifier"
 require "../output/colors"
 
 module Cjules
@@ -17,13 +18,15 @@ module Cjules
         interval = 3
         auto_approve = false
         reply = false
+        notify_raw = [] of String
         positional = [] of String
 
         parser = OptionParser.new do |p|
-          p.banner = "Usage: cjules watch <ID> [--interval SEC] [--auto-approve] [--reply]"
+          p.banner = "Usage: cjules watch <ID> [--interval SEC] [--auto-approve] [--reply] [--notify TARGET]"
           p.on("--interval SEC", "Poll interval in seconds (default 3)") { |v| interval = v.to_i }
           p.on("--auto-approve", "Automatically approve plans on AWAITING_PLAN_APPROVAL") { auto_approve = true }
           p.on("--reply", "Prompt on AWAITING_USER_FEEDBACK and send the reply") { reply = true }
+          p.on("--notify TARGET", "Notify on state change: desktop, slack, discord") { |v| notify_raw << v }
           p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
@@ -36,7 +39,9 @@ module Cjules
         end
         sid = Util::ID.normalize(id)
 
+        notify_targets = Notifier.parse_targets(notify_raw)
         cfg = Config.load
+        Notifier.validate_config!(notify_targets, cfg)
         client = Client.new(cfg)
 
         seen = Set(String).new
@@ -56,6 +61,9 @@ module Cjules
           state = sess.state
           if state != last_state
             puts "#{Output::Colors.gray("--")} state: #{Output::Colors.state(state || "-")}"
+            if state && !notify_targets.empty? && Notifier.should_notify?(state)
+              Notifier.notify(notify_targets, sess, state, cfg)
+            end
             handle_state_transition(state, sid, client, auto_approve, reply)
             last_state = state
           end

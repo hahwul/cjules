@@ -27,12 +27,16 @@ module Cjules
     property api_base : String
     property default_repo : String?
     property default_branch : String?
+    property slack_webhook : String?
+    property discord_webhook : String?
     property current : String?
     property accounts : Hash(String, String)
 
     def initialize(@api_base : String = DEFAULT_BASE,
                    @default_repo : String? = nil,
                    @default_branch : String? = nil,
+                   @slack_webhook : String? = nil,
+                   @discord_webhook : String? = nil,
                    @current : String? = nil,
                    @accounts : Hash(String, String) = {} of String => String)
     end
@@ -73,6 +77,8 @@ module Cjules
             end
             cfg.default_repo = nonempty(data["default_repo"]?)
             cfg.default_branch = nonempty(data["default_branch"]?)
+            cfg.slack_webhook = nonempty(data["slack_webhook"]?)
+            cfg.discord_webhook = nonempty(data["discord_webhook"]?)
             cfg.current = nonempty(data["current"]?)
 
             if accounts = data["accounts"]?
@@ -100,6 +106,12 @@ module Cjules
       if b = ENV["JULES_API_BASE"]?
         cfg.api_base = b unless b.empty?
       end
+      if sw = ENV["JULES_SLACK_WEBHOOK"]?
+        cfg.slack_webhook = sw unless sw.empty?
+      end
+      if dw = ENV["JULES_DISCORD_WEBHOOK"]?
+        cfg.discord_webhook = dw unless dw.empty?
+      end
       cfg
     end
 
@@ -125,6 +137,14 @@ module Cjules
               end
               if v = @default_branch
                 y.scalar "default_branch"
+                y.scalar v
+              end
+              if v = @slack_webhook
+                y.scalar "slack_webhook"
+                y.scalar v
+              end
+              if v = @discord_webhook
+                y.scalar "discord_webhook"
                 y.scalar v
               end
               if v = @current
