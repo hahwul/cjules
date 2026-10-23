@@ -6,6 +6,9 @@ require "../src/cjules/output/colors"
 require "../src/cjules/output/table"
 require "../src/cjules/config"
 require "../src/cjules/commands/new"
+require "../src/cjules/commands/watch"
+require "../src/cjules/commands/config"
+require "../src/cjules/notifier"
 require "../src/cjules/template_renderer"
 require "file_utils"
 
@@ -816,6 +819,216 @@ describe Cjules::API::Sessions do
       page = Cjules::API::Sessions.list_page(client, 100)
       page.sessions.not_nil!.size.should eq(1)
       page.sessions.not_nil![0].id.should eq("s1")
+    end
+  end
+end
+
+describe Cjules::Notifier do
+  describe ".parse_targets" do
+    it "parses single, comma-separated, and repeated targets with deduplication" do
+      Cjules::Notifier.parse_targets([] of String).should be_empty
+      Cjules::Notifier.parse_targets(["desktop"]).should eq(["desktop"])
+      Cjules::Notifier.parse_targets(["desktop,slack", "discord", "slack"]).should eq(["desktop", "slack", "discord"])
+      Cjules::Notifier.parse_targets([" DESKTOP , Slack "]).should eq(["desktop", "slack"])
+    end
+
+    it "raises UsageError on unknown or empty target" do
+      expect_raises(Cjules::UsageError, /unknown --notify target: bogus/) do
+        Cjules::Notifier.parse_targets(["bogus"])
+      end
+      expect_raises(Cjules::UsageError, /--notify requires a target/) do
+        Cjules::Notifier.parse_targets([""])
+      end
+    end
+  end
+
+  describe ".validate_config!" do
+    it "raises ConfigError when slack or discord target lacks webhook URL" do
+      cfg = Cjules::Config.new
+      Cjules::Notifier.validate_config!(["desktop"], cfg)
+
+      expect_raises(Cjules::ConfigError, /slack_webhook is not configured/) do
+        Cjules::Notifier.validate_config!(["slack"], cfg)
+      end
+
+      expect_raises(Cjules::ConfigError, /discord_webhook is not configured/) do
+        Cjules::Notifier.validate_config!(["discord"], cfg)
+      end
+
+      cfg.slack_webhook = "https://hooks.slack.com/services/T/B/X"
+      cfg.discord_webhook = "https://discord.com/api/webhooks/1/2"
+      Cjules::Notifier.validate_config!(["desktop", "slack", "discord"], cfg)
+    end
+
+    it "raises ConfigError when webhook URL is malformed or missing http(s) scheme" do
+      cfg = Cjules::Config.new(slack_webhook: "not-a-valid-url")
+      expect_raises(Cjules::ConfigError, /slack_webhook must be a valid http\(s\) URL/) do
+        Cjules::Notifier.validate_config!(["slack"], cfg)
+      end
+
+      cfg2 = Cjules::Config.new(discord_webhook: "ftp://example.com/hook")
+      expect_raises(Cjules::ConfigError, /discord_webhook must be a valid http\(s\) URL/) do
+        Cjules::Notifier.validate_config!(["discord"], cfg2)
+      end
+    end
+  end
+
+  describe ".should_notify?" do
+    it "triggers only on COMPLETED, FAILED, and AWAITING_USER_FEEDBACK" do
+      Cjules::Notifier.should_notify?("COMPLETED").should be_true
+      Cjules::Notifier.should_notify?("FAILED").should be_true
+      Cjules::Notifier.should_notify?("AWAITING_USER_FEEDBACK").should be_true
+
+      Cjules::Notifier.should_notify?("IN_PROGRESS").should be_false
+      Cjules::Notifier.should_notify?("QUEUED").should be_false
+      Cjules::Notifier.should_notify?("AWAITING_PLAN_APPROVAL").should be_false
+      Cjules::Notifier.should_notify?("CANCELLED").should be_false
+      Cjules::Notifier.should_notify?(nil).should be_false
+    end
+  end
+
+  describe ".desktop_command" do
+    it "builds safe argv for macOS osascript without string interpolation" do
+      title = %("quoted" & 'tricky')
+      body = "line 1\n\"line 2\""
+      prog, argv = Cjules::Notifier.desktop_command(title, body, darwin: true)
+      prog.should eq("osascript")
+      argv.first(7).should eq([
+        "-e", "on run argv",
+        "-e", "display notification (item 2 of argv) with title (item 1 of argv)",
+        "-e", "end run",
+        "--",
+      ])
+      argv[7].should eq(title)
+      argv[8].should eq(body)
+    end
+
+    it "builds safe argv for notify-send on Linux" do
+      prog, argv = Cjules::Notifier.desktop_command("cjules: COMPLETED", "Session s1", darwin: false)
+      prog.should eq("notify-send")
+      argv.should eq(["--", "cjules: COMPLETED", "Session s1"])
+    end
+  end
+
+  describe ".notify_desktop" do
+    it "invokes the desktop notifier binary directly with title and body arguments" do
+      with_isolated_home do |tmp|
+        bin_dir = File.join(tmp, "bin")
+        Dir.mkdir_p(bin_dir)
+        out_file = File.join(tmp, "notify-out.txt")
+        cmd_name = {% if flag?(:darwin) %} "osascript" {% else %} "notify-send" {% end %}
+        script_path = File.join(bin_dir, cmd_name)
+        File.write(script_path, "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"#{out_file}\"\n")
+        File.chmod(script_path, 0o755)
+
+        old_path = ENV["PATH"]?
+        ENV["PATH"] = "#{bin_dir}:#{old_path}"
+        begin
+          Cjules::Notifier.notify_desktop("cjules: COMPLETED", "Session 123 (Fix bug): COMPLETED")
+          lines = File.read(out_file).lines.map(&.chomp)
+          lines.includes?("cjules: COMPLETED").should be_true
+          lines.includes?("Session 123 (Fix bug): COMPLETED").should be_true
+        ensure
+          old_path ? (ENV["PATH"] = old_path) : ENV.delete("PATH")
+        end
+      end
+    end
+  end
+end
+
+describe "Watch notifications (--notify) with WebMock" do
+  it "persists slack_webhook and discord_webhook in Config and ConfigCmd" do
+    with_isolated_home do
+      Cjules::Commands::ConfigCmd.run(["set", "slack_webhook", "https://hooks.slack.com/services/T/B/S"]).should eq(0)
+      Cjules::Commands::ConfigCmd.run(["set", "discord_webhook", "https://discord.com/api/webhooks/1/D"]).should eq(0)
+
+      cfg = Cjules::Config.load
+      cfg.slack_webhook.should eq("https://hooks.slack.com/services/T/B/S")
+      cfg.discord_webhook.should eq("https://discord.com/api/webhooks/1/D")
+
+      ENV["JULES_SLACK_WEBHOOK"] = "https://hooks.slack.com/services/ENV"
+      ENV["JULES_DISCORD_WEBHOOK"] = "https://discord.com/api/webhooks/ENV"
+      env_cfg = Cjules::Config.load
+      env_cfg.slack_webhook.should eq("https://hooks.slack.com/services/ENV")
+      env_cfg.discord_webhook.should eq("https://discord.com/api/webhooks/ENV")
+    end
+  end
+
+  it "notifies slack and discord only on AWAITING_USER_FEEDBACK, COMPLETED, or FAILED transitions" do
+    with_isolated_home do
+      with_webmock do
+        cfg = Cjules::Config.new(
+          api_base: "https://jules.googleapis.com",
+          slack_webhook: "https://hooks.slack.com/services/T/B/S",
+          discord_webhook: "https://discord.com/api/webhooks/1/D",
+          accounts: {"t" => "KEY"},
+          current: "t",
+        )
+        cfg.save
+
+        states = ["IN_PROGRESS", "AWAITING_PLAN_APPROVAL", "AWAITING_USER_FEEDBACK", "AWAITING_USER_FEEDBACK", "COMPLETED"]
+        call_idx = 0
+        WebMock.stub(:get, "https://jules.googleapis.com/v1alpha/sessions/s99").to_return do |_|
+          st = states[{call_idx, states.size - 1}.min]
+          call_idx += 1
+          HTTP::Client::Response.new(200, body: %({"id":"s99","title":"Refactor auth","state":#{st.to_json}}), headers: HTTP::Headers{"Content-Type" => "application/json"})
+        end
+        stub_jules(:get, "/v1alpha/sessions/s99/activities?pageSize=100", body: %({"activities":[]}))
+
+        slack_payloads = [] of String
+        discord_payloads = [] of String
+
+        WebMock.stub(:post, "https://hooks.slack.com/services/T/B/S").to_return do |req|
+          slack_payloads << (req.body.try(&.gets_to_end) || "")
+          HTTP::Client::Response.new(200, body: "ok")
+        end
+
+        WebMock.stub(:post, "https://discord.com/api/webhooks/1/D").to_return do |req|
+          discord_payloads << (req.body.try(&.gets_to_end) || "")
+          HTTP::Client::Response.new(204)
+        end
+
+        rc = Cjules::Commands::Watch.run(["s99", "--interval", "0", "--notify", "slack,discord"])
+        rc.should eq(0)
+
+        # Should notify exactly twice: once on transition to AWAITING_USER_FEEDBACK, once on COMPLETED.
+        slack_payloads.size.should eq(2)
+        discord_payloads.size.should eq(2)
+
+        JSON.parse(slack_payloads[0])["text"].as_s.should contain("AWAITING_USER_FEEDBACK")
+        JSON.parse(slack_payloads[0])["text"].as_s.should contain("Refactor auth")
+        JSON.parse(slack_payloads[1])["text"].as_s.should contain("COMPLETED")
+
+        JSON.parse(discord_payloads[0])["content"].as_s.should contain("AWAITING_USER_FEEDBACK")
+        JSON.parse(discord_payloads[1])["content"].as_s.should contain("COMPLETED")
+      end
+    end
+  end
+
+  it "notifies on FAILED and does not crash if webhook returns HTTP 500" do
+    with_isolated_home do
+      with_webmock do
+        cfg = Cjules::Config.new(
+          api_base: "https://jules.googleapis.com",
+          slack_webhook: "https://hooks.slack.com/services/T/B/S",
+          accounts: {"t" => "KEY"},
+          current: "t",
+        )
+        cfg.save
+
+        stub_jules(:get, "/v1alpha/sessions/sfail", body: %({"id":"sfail","title":"Broken build","state":"FAILED"}))
+        stub_jules(:get, "/v1alpha/sessions/sfail/activities?pageSize=100", body: %({"activities":[]}))
+
+        slack_called = false
+        WebMock.stub(:post, "https://hooks.slack.com/services/T/B/S").to_return do |_|
+          slack_called = true
+          HTTP::Client::Response.new(500, body: "server error")
+        end
+
+        rc = Cjules::Commands::Watch.run(["sfail", "--interval", "0", "--notify", "slack"])
+        rc.should eq(0)
+        slack_called.should be_true
+      end
     end
   end
 end

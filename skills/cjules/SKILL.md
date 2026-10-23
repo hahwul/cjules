@@ -32,7 +32,7 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 | `cjules new [PROMPT\|-]` | Create a session. Auto-detects `--repo` from `git remote origin` and `--branch` from `HEAD`. Supports `--template NAME` and `--var KEY=VALUE`. |
 | `cjules ls` | List sessions. Filters: `--state`, `--repo`, `--since`, `--search`. Outputs: `-f table\|json\|jsonl\|yaml`. |
 | `cjules get <ID>` | Show one session in full. |
-| `cjules watch <ID>` | Tail activities until session reaches a terminal state. `--interval N` to change polling. |
+| `cjules watch <ID>` | Tail activities until session reaches a terminal state. `--interval N` to change polling; `--notify desktop\|slack\|discord` for notifications. |
 | `cjules msg <ID> <TEXT\|->` | Send a follow-up message into an active session. |
 | `cjules approve <ID>` | Approve a plan. Aborts unless state is `AWAITING_PLAN_APPROVAL`; pass `--force` to skip the precheck. |
 | `cjules plan <ID>` | Show the latest generated plan (`--all` for full revision history). |
@@ -102,6 +102,7 @@ cjules patch <id> -i               # interactively select hunks to apply
 **Live-tail a running session**
 ```sh
 cjules watch <id> --interval 5
+cjules watch <id> --notify desktop,slack
 ```
 
 **Continue a stalled / waiting session**
