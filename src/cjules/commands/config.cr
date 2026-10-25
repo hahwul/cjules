@@ -6,7 +6,7 @@ module Cjules
     module ConfigCmd
       extend self
 
-      KEYS = %w[api_base default_repo default_branch]
+      KEYS = %w[api_base default_repo default_branch slack_webhook discord_webhook]
 
       def run(args : Array(String)) : Int32
         sub = args.first?
@@ -55,6 +55,8 @@ module Cjules
         puts "api_base       : #{cfg.api_base}"
         puts "default_repo   : #{cfg.default_repo || "(unset)"}"
         puts "default_branch : #{cfg.default_branch || "(unset)"}"
+        puts "slack_webhook  : #{cfg.slack_webhook.try { |v| Config.mask(v) } || "(unset)"}"
+        puts "discord_webhook: #{cfg.discord_webhook.try { |v| Config.mask(v) } || "(unset)"}"
 
         active_label =
           if env_override
@@ -89,6 +91,10 @@ module Cjules
           cfg.default_repo = value.empty? ? nil : value
         when "default_branch"
           cfg.default_branch = value.empty? ? nil : value
+        when "slack_webhook"
+          cfg.slack_webhook = value.empty? ? nil : value
+        when "discord_webhook"
+          cfg.discord_webhook = value.empty? ? nil : value
         else
           STDERR.puts "error: unknown key: #{key}"
           STDERR.puts "  available: #{KEYS.join(", ")}"

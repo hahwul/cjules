@@ -132,7 +132,7 @@ module Cjules
           get <ID>            Show a session
           rm <ID...>          Delete sessions, or bulk by --state/--older-than/--repo
           prune               Bulk delete with dry-run; --completed, --failed, --older-than, --repo
-          watch <ID>          Tail activities; --auto-approve / --reply for hands-free runs
+          watch <ID>          Tail activities; --auto-approve, --reply, --notify for hands-free runs
           msg <ID> <TEXT|->   Send a follow-up message
           approve <ID>        Approve a pending plan
           plan <ID>           Show the latest generated plan (--all for history)
@@ -161,7 +161,7 @@ module Cjules
 
         CONFIG:
           config show         Show effective config
-          config set <K> <V>  Set api_base / default_repo / default_branch
+          config set <K> <V>  Set api_base / default_repo / default_branch / slack_webhook / discord_webhook
           config path         Print config file path
 
         MISC:
@@ -171,10 +171,12 @@ module Cjules
         Run `cjules <command> --help` for command-specific options.
 
         ENV:
-          JULES_API_KEY   override key for one-off invocations
-          JULES_ACCOUNT   override active account alias
-          JULES_API_BASE  override API base URL
-          NO_COLOR        disable color output
+          JULES_API_KEY         override key for one-off invocations
+          JULES_ACCOUNT         override active account alias
+          JULES_API_BASE        override API base URL
+          JULES_SLACK_WEBHOOK   override Slack webhook URL for watch --notify
+          JULES_DISCORD_WEBHOOK override Discord webhook URL for watch --notify
+          NO_COLOR              disable color output
         USAGE
     end
   end

@@ -16,7 +16,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 
 - **Git-aware `new`** — auto-detects `--repo` and `--branch`; reads the prompt from args, `stdin`, or `--file`.
 - **Parallel sessions** — `cjules new --parallel N` runs N sessions with the same prompt.
-- **Watch** — `cjules watch <id>` tails activities; `--auto-approve --reply` for hands-free runs.
+- **Watch** — `cjules watch <id>` tails activities; `--auto-approve --reply --notify desktop|slack|discord` for hands-free runs.
 - **Prune** — filter by state, age, repo, or `--all`; dry-run by default, `-y` to apply.
 - **Patch & PR** — `cjules patch <id> --apply` (or `-i` for interactive hunks) runs `git apply`; `cjules pr <id> --open` opens the PR.
 - **Logs** — `cjules logs <id> -f md` for a full report, `--bash` for shell transcripts, `--save-media` for artifacts.
@@ -97,8 +97,9 @@ cjules new --parallel 5 --auto-pr "Refactor the config loader" -f json | jq -r '
 # Watch a session live (3s default poll)
 cjules watch <session-id> --interval 5
 
-# Hands-free run: auto-approve plans and reply to feedback prompts
-cjules watch <session-id> --auto-approve --reply
+# Hands-free run: auto-approve plans, reply to feedback prompts, and send desktop/webhook notifications
+cjules watch <session-id> --auto-approve --reply --notify desktop
+cjules watch <session-id> --notify slack,discord
 
 # Send a follow-up message
 cjules msg <session-id> "Also add a /readyz endpoint"
@@ -257,8 +258,10 @@ JULES_API_KEY=AIza... cjules ls
 Stored at `~/.config/cjules/config.yml` with `0600` permissions. Set defaults:
 
 ```sh
-cjules config set default_repo  hahwul/cjules
-cjules config set default_branch main
+cjules config set default_repo    hahwul/cjules
+cjules config set default_branch  main
+cjules config set slack_webhook   https://hooks.slack.com/services/...
+cjules config set discord_webhook https://discord.com/api/webhooks/...
 ```
 
 ## Shell completion

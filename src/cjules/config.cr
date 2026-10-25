@@ -27,12 +27,16 @@ module Cjules
     property api_base : String
     property default_repo : String?
     property default_branch : String?
+    property slack_webhook : String?
+    property discord_webhook : String?
     property current : String?
     property accounts : Hash(String, String)
 
     def initialize(@api_base : String = DEFAULT_BASE,
                    @default_repo : String? = nil,
                    @default_branch : String? = nil,
+                   @slack_webhook : String? = nil,
+                   @discord_webhook : String? = nil,
                    @current : String? = nil,
                    @accounts : Hash(String, String) = {} of String => String)
     end
@@ -81,6 +85,8 @@ module Cjules
           end
           cfg.default_repo = text(top["default_repo"]?)
           cfg.default_branch = text(top["default_branch"]?)
+          cfg.slack_webhook = text(top["slack_webhook"]?)
+          cfg.discord_webhook = text(top["discord_webhook"]?)
           cfg.current = text(top["current"]?)
 
           pairs(top["accounts"]?).each do |k, v|
@@ -101,6 +107,12 @@ module Cjules
 
       if b = ENV["JULES_API_BASE"]?
         cfg.api_base = b unless b.empty?
+      end
+      if sw = ENV["JULES_SLACK_WEBHOOK"]?
+        cfg.slack_webhook = sw unless sw.empty?
+      end
+      if dw = ENV["JULES_DISCORD_WEBHOOK"]?
+        cfg.discord_webhook = dw unless dw.empty?
       end
       cfg
     end
@@ -127,6 +139,8 @@ module Cjules
         data = {"api_base" => @api_base} of String => String | Hash(String, String)
         @default_repo.try { |v| data["default_repo"] = v }
         @default_branch.try { |v| data["default_branch"] = v }
+        @slack_webhook.try { |v| data["slack_webhook"] = v }
+        @discord_webhook.try { |v| data["discord_webhook"] = v }
         @current.try { |v| data["current"] = v }
         data["accounts"] = @accounts
         # Hash#to_yaml quotes strings YAML would read as numbers/bools/null.
