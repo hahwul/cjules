@@ -68,14 +68,10 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: source ID is required"
-          return 2
-        end
+        sid = Util::ID.require!(positional, "source ID")
         cfg = Config.load
         client = Client.new(cfg)
-        s = API::Sources.get(client, Util::ID.normalize(id))
+        s = API::Sources.get(client, sid)
         Output::Format.source(s, output)
         0
       end

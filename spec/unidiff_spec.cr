@@ -52,7 +52,6 @@ describe Cjules::Unidiff::Interactive do
       +two
       PATCH
     result, _, _ = run_select.call(patch, "y\nn\n")
-    result.selected_chunks.should eq(1)
     result.selected_patch.includes?("+one").should be_true
     result.selected_patch.includes?("+two").should be_false
   end
@@ -73,7 +72,6 @@ describe Cjules::Unidiff::Interactive do
       +two
       PATCH
     result, _, _ = run_select.call(patch, "a\n")
-    result.selected_chunks.should eq(2)
     result.selected_patch.includes?("diff --git a/foo.txt b/foo.txt").should be_true
     result.selected_patch.includes?("diff --git a/bar.txt b/bar.txt").should be_true
   end
@@ -92,7 +90,6 @@ describe Cjules::Unidiff::Interactive do
     result, _, _ = run_select.call(patch, "d\n")
     result.selected_patch.empty?.should be_true
     result.quit_early?.should be_false
-    result.skipped_chunks.should eq(2)
   end
 
   it "quits early with q" do

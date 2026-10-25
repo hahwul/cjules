@@ -23,7 +23,7 @@ module Cjules
 
         parser = OptionParser.new do |p|
           p.banner = "Usage: cjules watch <ID> [--interval SEC] [--auto-approve] [--reply] [--notify TARGET]"
-          p.on("--interval SEC", "Poll interval in seconds (default 3)") { |v| interval = v.to_i }
+          p.on("--interval SEC", "Poll interval in seconds (default 3)") { |v| interval = Util.int_flag!("--interval", v, min: 1) }
           p.on("--auto-approve", "Automatically approve plans on AWAITING_PLAN_APPROVAL") { auto_approve = true }
           p.on("--reply", "Prompt on AWAITING_USER_FEEDBACK and send the reply") { reply = true }
           p.on("--notify TARGET", "Notify on state change: desktop, slack, discord") { |v| notify_raw << v }
@@ -32,12 +32,7 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
-        sid = Util::ID.normalize(id)
+        sid = Util::ID.require!(positional)
 
         notify_targets = Notifier.parse_targets(notify_raw)
         cfg = Config.load

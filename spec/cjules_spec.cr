@@ -312,10 +312,10 @@ describe Cjules::Util::PromptInput do
 end
 
 describe Cjules::Output::Colors do
-  it "strips ANSI codes when computing visible length" do
-    Cjules::Output::Colors.visible_length("\e[31mhello\e[0m").should eq(5)
-    Cjules::Output::Colors.visible_length("plain").should eq(5)
-    Cjules::Output::Colors.visible_length("\e[1;32mok\e[0m\e[2mzz\e[0m").should eq(4)
+  it "strips ANSI codes when computing display width" do
+    Cjules::Output::Colors.display_width("\e[31mhello\e[0m").should eq(5)
+    Cjules::Output::Colors.display_width("plain").should eq(5)
+    Cjules::Output::Colors.display_width("\e[1;32mok\e[0m\e[2mzz\e[0m").should eq(4)
   end
 
   it "counts CJK / fullwidth chars as 2 cells in display_width" do
@@ -338,7 +338,7 @@ describe Cjules::Output::Colors do
     Cjules::Output::Colors.state("COMPLETED").should eq("COMPLETED")
     Cjules::Output::Colors.state("FAILED").should eq("FAILED")
 
-    Cjules::Output::Colors.enable!
+    Colorize.enabled = true
     Cjules::Output::Colors.state("COMPLETED").should contain("\e[32m")
     Cjules::Output::Colors.state("FAILED").should contain("\e[31m")
     Cjules::Output::Colors.state("IN_PROGRESS").should contain("\e[34m")
@@ -502,6 +502,64 @@ describe Cjules::Config do
         loaded.default_branch.should eq("main")
         loaded.current.should eq("x")
         loaded.accounts.should eq({"x" => "K1", "y" => "K2"})
+      end
+    end
+
+    it "round-trips aliases and keys that look like numbers or booleans" do
+      with_isolated_home do
+        cfg = Cjules::Config.new(current: "2024", accounts: {"2024" => "12345678", "true" => "null", "1.5" => "K"})
+        cfg.save
+
+        loaded = Cjules::Config.load
+        loaded.current.should eq("2024")
+        loaded.accounts.should eq({"2024" => "12345678", "true" => "null", "1.5" => "K"})
+      end
+    end
+
+    it "recovers unquoted numeric/boolean entries written by older versions" do
+      with_isolated_home do |tmp|
+        Dir.mkdir_p(File.join(tmp, ".config", "cjules"))
+        File.write(Cjules::Config.path, "current: 2024\naccounts:\n  2024: 12345678\n  true: K\n")
+
+        loaded = Cjules::Config.load
+        loaded.current.should eq("2024")
+        loaded.accounts.should eq({"2024" => "12345678", "true" => "K"})
+      end
+    end
+
+    it "keeps the exact spelling of legacy floats, dates, octals and yes/no" do
+      with_isolated_home do |tmp|
+        Dir.mkdir_p(File.join(tmp, ".config", "cjules"))
+        File.write(Cjules::Config.path, <<-YAML)
+          current: yes
+          default_branch: 1.10
+          accounts:
+            yes: K1
+            0755: K2
+            1.5: K3
+            2024-01-01: K4
+            "true": K5
+          YAML
+
+        loaded = Cjules::Config.load
+        loaded.current.should eq("yes")
+        loaded.default_branch.should eq("1.10")
+        loaded.accounts.should eq({"yes" => "K1", "0755" => "K2", "1.5" => "K3", "2024-01-01" => "K4", "true" => "K5"})
+
+        loaded.save
+        Cjules::Config.load.accounts.should eq(loaded.accounts)
+      end
+    end
+
+    it "treats plain null values as unset but keeps a quoted \"null\" string" do
+      with_isolated_home do |tmp|
+        Dir.mkdir_p(File.join(tmp, ".config", "cjules"))
+        File.write(Cjules::Config.path, "default_repo: ~\ndefault_branch: null\naccounts:\n  a: null\n  b: \"null\"\n")
+
+        loaded = Cjules::Config.load
+        loaded.default_repo.should be_nil
+        loaded.default_branch.should be_nil
+        loaded.accounts.should eq({"b" => "null"})
       end
     end
 
@@ -731,6 +789,39 @@ describe Cjules::TemplateRenderer do
       end
     end
 
+    it "still expands directives inside included files (partials)" do
+      with_isolated_home do |tmp|
+        partial = File.join(tmp, "partial.md")
+        File.write(partial, "hi {{.Var \"name\"}}")
+        Cjules::TemplateRenderer.render("{{.File \"#{partial}\"}}", {"name" => "Dana"}).should eq("hi Dana")
+      end
+    end
+
+    it "inserts git diff output verbatim, without expanding directives in it" do
+      with_isolated_home do |tmp|
+        # Keep git (and render's own `git diff`) away from any outer repo, e.g.
+        # when specs run from a hook that exports GIT_DIR.
+        git_env = %w[GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CEILING_DIRECTORIES]
+        saved = git_env.map { |k| {k, ENV[k]?} }
+        git_env.each { |k| ENV.delete(k) }
+        ENV["GIT_CEILING_DIRECTORIES"] = File.dirname(tmp)
+        git = ->(args : Array(String)) { Process.run("git", args, chdir: tmp).success?.should be_true }
+        begin
+          git.call(%w[init -q])
+          File.write(File.join(tmp, "f.txt"), "old\n")
+          git.call(%w[add f.txt])
+          git.call(%w[-c user.email=t@t -c user.name=t commit -qm init])
+          File.write(File.join(tmp, "f.txt"), "{{.Var \"name\"}}\n")
+          Dir.cd(tmp) do
+            result = Cjules::TemplateRenderer.render("{{.GitDiff}}", {"name" => "X"})
+            result.should contain("+{{.Var \"name\"}}")
+          end
+        ensure
+          saved.each { |k, v| v ? (ENV[k] = v) : ENV.delete(k) }
+        end
+      end
+    end
+
     it "preserves template content around directives" do
       template = "Before {{.Var \"x\"}} middle {{.Var \"y\"}} after"
       vars = {"x" => "X", "y" => "Y"}
@@ -816,9 +907,21 @@ describe Cjules::API::Sessions do
       stub_jules(:get, "/v1alpha/sessions?pageSize=100", body: %({"sessions":[{"id":"s1","state":"QUEUED"}],"nextPageToken":""} ))
 
       client = Cjules::Client.new(cfg)
-      page = Cjules::API::Sessions.list_page(client, 100)
-      page.sessions.not_nil!.size.should eq(1)
-      page.sessions.not_nil![0].id.should eq("s1")
+      sessions = Cjules::API::Sessions.list_all(client)
+      sessions.size.should eq(1)
+      sessions[0].id.should eq("s1")
+    end
+  end
+
+  it "follows nextPageToken across pages and stops at limit" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sessions?pageSize=100", body: %({"sessions":[{"id":"s1"},{"id":"s2"}],"nextPageToken":"p2"}))
+      stub_jules(:get, "/v1alpha/sessions?pageSize=100&pageToken=p2", body: %({"sessions":[{"id":"s3"}]}))
+
+      client = Cjules::Client.new(cfg)
+      Cjules::API::Sessions.list_all(client).compact_map(&.id).should eq(%w[s1 s2 s3])
+      Cjules::API::Sessions.list_all(client, 2).compact_map(&.id).should eq(%w[s1 s2])
     end
   end
 end
@@ -936,6 +1039,19 @@ describe Cjules::Notifier do
   end
 end
 
+describe Cjules::API::Sources do
+  it "sends filter after the paging params on every page" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sources?pageSize=100&filter=x", body: %({"sources":[{"id":"a"}],"nextPageToken":"p2"}))
+      stub_jules(:get, "/v1alpha/sources?pageSize=100&pageToken=p2&filter=x", body: %({"sources":[{"id":"b"}]}))
+
+      client = Cjules::Client.new(cfg)
+      Cjules::API::Sources.list_all(client, "x").compact_map(&.id).should eq(%w[a b])
+    end
+  end
+end
+
 describe "Watch notifications (--notify) with WebMock" do
   it "persists slack_webhook and discord_webhook in Config and ConfigCmd" do
     with_isolated_home do
@@ -988,7 +1104,7 @@ describe "Watch notifications (--notify) with WebMock" do
           HTTP::Client::Response.new(204)
         end
 
-        rc = Cjules::Commands::Watch.run(["s99", "--interval", "0", "--notify", "slack,discord"])
+        rc = Cjules::Commands::Watch.run(["s99", "--interval", "1", "--notify", "slack,discord"])
         rc.should eq(0)
 
         # Should notify exactly twice: once on transition to AWAITING_USER_FEEDBACK, once on COMPLETED.
@@ -1025,10 +1141,82 @@ describe "Watch notifications (--notify) with WebMock" do
           HTTP::Client::Response.new(500, body: "server error")
         end
 
-        rc = Cjules::Commands::Watch.run(["sfail", "--interval", "0", "--notify", "slack"])
+        rc = Cjules::Commands::Watch.run(["sfail", "--interval", "1", "--notify", "slack"])
         rc.should eq(0)
         slack_called.should be_true
       end
     end
+  end
+end
+
+describe Cjules::Util::ID do
+  it "require! normalizes the first positional and raises UsageError when missing" do
+    Cjules::Util::ID.require!(["sessions/abc"]).should eq("abc")
+    expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!([] of String) }
+    expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!([""]) }
+    expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!(["sessions/"]) }
+    expect_raises(Cjules::UsageError, "source ID is required") { Cjules::Util::ID.require!([] of String, "source ID") }
+  end
+end
+
+describe "Cjules::Util.int_flag!" do
+  it "parses integers and raises UsageError otherwise" do
+    Cjules::Util.int_flag!("--limit", "5").should eq(5)
+    expect_raises(Cjules::UsageError, %(invalid --limit value: "abc")) { Cjules::Util.int_flag!("--limit", "abc") }
+    expect_raises(Cjules::UsageError, "invalid --interval value: 0 (must be >= 1)") { Cjules::Util.int_flag!("--interval", "0", min: 1) }
+    Cjules::Util.int_flag!("--interval", "1", min: 1).should eq(1)
+  end
+end
+
+describe Cjules::CLI do
+  it "exits 2 with a usage error for bad flags instead of crashing" do
+    with_isolated_home do
+      Cjules::CLI.run(["ls", "--limit", "abc"]).should eq(2)
+      Cjules::CLI.run(["ls", "--bogus"]).should eq(2)
+      Cjules::CLI.run(["watch", "x", "--interval"]).should eq(2)
+    end
+  end
+
+  it "treats a flag after --account as a missing value" do
+    with_isolated_home do
+      Cjules::CLI.run(["--account", "--no-color", "ls"]).should eq(2)
+      ENV["JULES_ACCOUNT"]?.should be_nil
+    end
+  end
+
+  it "still accepts a single-dash alias after --account" do
+    with_isolated_home do
+      Cjules::Config.new(accounts: {"-work" => "K"}).save
+      # `config path` needs no network; the alias only has to pass validation.
+      Cjules::CLI.run(["--account", "-work", "config", "path"]).should eq(0)
+      ENV["JULES_ACCOUNT"]?.should eq("-work")
+    end
+  end
+
+  it "rejects empty IDs before any request is made" do
+    with_isolated_home do
+      Cjules::CLI.run(["activity", "abc", "sessions/abc/activities/"]).should eq(2)
+      Cjules::CLI.run(["rm", "sessions/", "-y"]).should eq(2)
+    end
+  end
+end
+
+describe Cjules::API do
+  it "refuses to build a resource path from an empty ID" do
+    cfg = Cjules::Config.new(accounts: {"t" => "KEY"}, current: "t")
+    client = Cjules::Client.new(cfg)
+    expect_raises(Cjules::UsageError, "empty resource ID") { Cjules::API::Sessions.delete(client, "") }
+    expect_raises(Cjules::UsageError, "empty resource ID") { Cjules::API::Activities.get(client, "s", "") }
+  end
+end
+
+describe Cjules::Util::Duration do
+  it "cutoff! subtracts the span from now and raises UsageError on bad input" do
+    (Time.utc - Cjules::Util::Duration.cutoff!("1h")).should be_close(1.hour, 5.seconds)
+    expect_raises(Cjules::UsageError, "invalid duration: zz") { Cjules::Util::Duration.cutoff!("zz") }
+    expect_raises(Cjules::UsageError, "custom") { Cjules::Util::Duration.cutoff!("zz", "custom") }
+    # Out-of-range spans are usage errors, not ArgumentError crashes.
+    expect_raises(Cjules::UsageError) { Cjules::Util::Duration.cutoff!("99999999999d") }
+    expect_raises(Cjules::UsageError) { Cjules::Util::Duration.cutoff!("99999999d") }
   end
 end

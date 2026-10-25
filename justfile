@@ -53,7 +53,7 @@ test:
 # Check version consistency across all files.
 [group('development')]
 version-check:
-    crystal run scripts/version_check.cr
+    crystal run scripts/version_update.cr -- --check
 
 # Update version across all files.
 [group('development')]

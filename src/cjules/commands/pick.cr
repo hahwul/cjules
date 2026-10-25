@@ -32,24 +32,17 @@ module Cjules
 
         chosen_id : String? = nil
 
-        if has_fzf?
+        if Process.find_executable("fzf")
           lines = sessions.compact_map do |s|
             sid = s.id
             next unless sid
             title = (s.title || s.prompt || "").gsub(/\s+/, " ")
-            "#{sid[0..11]}\t#{(s.state || "-").ljust(24)}\t#{title[0..80]}"
+            # Field 1 (full ID) is hidden from fzf and used to map the pick back.
+            "#{sid}\t#{sid[0..11]}\t#{(s.state || "-").ljust(24)}\t#{title[0..80]}"
           end
-          chosen_line = run_fzf(lines.join("\n"))
-          if chosen_line && !chosen_line.empty?
-            short = chosen_line.split("\t", 2).first?
-            sessions.each do |s|
-              sid = s.id
-              next unless sid
-              if short && sid.starts_with?(short)
-                chosen_id = sid
-                break
-              end
-            end
+          if chosen_line = run_fzf(lines.join("\n"))
+            full = chosen_line.split("\t", 2).first
+            chosen_id = full if sessions.any? { |s| s.id == full }
           end
         else
           sessions.each_with_index do |s, i|
@@ -81,19 +74,11 @@ module Cjules
         end
       end
 
-      private def has_fzf? : Bool
-        Process.run("which", ["fzf"],
-          output: Process::Redirect::Close,
-          error: Process::Redirect::Close).success?
-      rescue Exception
-        false
-      end
-
       private def run_fzf(input : String) : String?
         captured = IO::Memory.new
         in_io = IO::Memory.new(input)
         begin
-          status = Process.run("fzf", ["--no-sort", "--ansi"],
+          status = Process.run("fzf", ["--no-sort", "--ansi", "--delimiter", "\t", "--with-nth", "2.."],
             input: in_io,
             output: captured,
             error: Process::Redirect::Inherit)

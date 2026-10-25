@@ -12,21 +12,19 @@ module Cjules
 
     # Render a template string with variable substitution
     def render(template : String, vars : Variables = Variables.new) : String
-      result = template.dup
+      # {{.File}} first, so included partials can use {{.GitDiff}}/{{.Var}}.
+      result = process_file_directives(template)
 
-      # Process {{.File "path"}} directives
-      result = process_file_directives(result)
-
-      # Process {{.GitDiff}} directives (compute diff once and reuse)
-      if result.includes?("{{.GitDiff}}")
-        diff = get_git_diff
-        result = result.gsub("{{.GitDiff}}", diff)
+      # {{.GitDiff}} and {{.Var}} in a single pass, so directive-like text inside
+      # the diff or a variable value is inserted verbatim, not expanded again.
+      diff : String? = nil
+      result.gsub(/\{\{\.GitDiff\}\}|\{\{\.Var\s+"([^"]+)"\}\}|\{\{\.Var\s+'([^']+)'\}\}/) do
+        if var_name = $~[1]? || $~[2]?
+          vars[var_name]? || "[undefined variable: #{var_name}]"
+        else
+          diff ||= get_git_diff
+        end
       end
-
-      # Process {{.Var "name"}} directives
-      result = process_var_directives(result, vars)
-
-      result
     end
 
     # Parse --var arguments from CLI (format: key=value)
@@ -50,20 +48,6 @@ module Cjules
         # Extract path from either double or single quotes
         path = $~[1]? || $~[2]
         read_file(path)
-      end
-    end
-
-    private def process_git_diff_directives(content : String) : String
-      content.gsub(/\{\{\.GitDiff\}\}/) do
-        get_git_diff
-      end
-    end
-
-    private def process_var_directives(content : String, vars : Variables) : String
-      # Match {{.Var "name"}} or {{.Var 'name'}}
-      content.gsub(/\{\{\.Var\s+"([^"]+)"\}\}|\{\{\.Var\s+'([^']+)'\}\}/) do
-        var_name = $~[1]? || $~[2]
-        vars[var_name]? || "[undefined variable: #{var_name}]"
       end
     end
 

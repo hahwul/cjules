@@ -45,11 +45,9 @@ module Cjules
 
       struct Result
         getter selected_patch : String
-        getter selected_chunks : Int32
-        getter skipped_chunks : Int32
         getter? quit_early : Bool
 
-        def initialize(@selected_patch : String, @selected_chunks : Int32, @skipped_chunks : Int32, @quit_early : Bool)
+        def initialize(@selected_patch : String, @quit_early : Bool)
         end
       end
 
@@ -59,12 +57,10 @@ module Cjules
                  display : IO = STDOUT) : Result
         all = Unidiff.chunks(text)
         if all.empty?
-          return Result.new("", 0, 0, false)
+          return Result.new("", false)
         end
 
         selected = [] of Array(String)
-        selected_count = 0
-        skipped_count = 0
         quit_early = false
 
         i = 0
@@ -85,34 +81,24 @@ module Cjules
             case decision
             when Decision::Apply
               selected << chunk.lines
-              selected_count += 1
               break
             when Decision::Skip
-              skipped_count += 1
               break
             when Decision::Quit
               quit_early = true
               i = all.size
               break
             when Decision::ApplyAll
-              selected << chunk.lines
-              selected_count += 1
-              (i + 1).upto(all.size - 1) do |j|
-                selected << all[j].lines
-                selected_count += 1
-              end
+              all[i..].each { |c| selected << c.lines }
               i = all.size
               break
             when Decision::SkipAll
-              skipped_count += 1
-              skipped_count += (all.size - (i + 1))
               i = all.size
               break
             when Decision::Edit
               edited = edit_chunk(chunk, output, display)
               if edited
                 selected << edited
-                selected_count += 1
                 break
               end
               # If editing failed/aborted, re-prompt for the same chunk.
@@ -124,8 +110,7 @@ module Cjules
           i += 1
         end
 
-        patch = render_selected(selected)
-        Result.new(patch, selected_count, skipped_count, quit_early)
+        Result.new(render_selected(selected), quit_early)
       end
 
       private def show_chunk(chunk : Chunk, idx : Int32, total : Int32, display : IO)
@@ -211,7 +196,7 @@ module Cjules
         program = parts[0]
         args = parts[1..] + [path]
         status = Process.run(program, args,
-          input: input_for_editor,
+          input: STDIN, # the editor needs the real terminal, not the prompt IO
           output: display,
           error: output)
         status.success?
@@ -219,11 +204,6 @@ module Cjules
         output.puts "error: failed to run editor: #{ex.message}"
         output.flush
         false
-      end
-
-      private def input_for_editor : IO
-        # Editor needs the real stdin for interactive control (not the prompt IO).
-        STDIN
       end
 
       private def check_applies?(patch_path : String, output : IO) : Bool

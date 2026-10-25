@@ -22,9 +22,7 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        raise Cjules::UsageError.new("session ID is required") unless id
-        sid = Util::ID.normalize(id)
+        sid = Util::ID.require!(positional)
 
         cfg = Config.load
         client = Client.new(cfg)

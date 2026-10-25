@@ -81,8 +81,8 @@ module Cjules
           STDERR.puts "warning: this key is already saved as `#{dup}`"
         end
 
-        existed = cfg.has_account?(an)
-        cfg.add_account(an, key)
+        existed = cfg.accounts.has_key?(an)
+        cfg.accounts[an] = key
 
         # New default: activate only when there's no current account, or when --activate.
         was_activated = false

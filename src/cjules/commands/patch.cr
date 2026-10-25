@@ -25,19 +25,14 @@ module Cjules
             interactive = true
             apply = true
           end
-          p.on("--index N", "Pick specific patch (default: last)") { |v| index = v.to_i }
+          p.on("--index N", "Pick specific patch (default: last)") { |v| index = Util.int_flag!("--index", v) }
           p.on("--list", "List all patches with metadata, do not print body") { list_only = true }
           p.on("-h", "--help", "Show help") { Help.show_help(p); exit 0 }
           p.unknown_args { |before, _| positional = before }
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
-        sid = Util::ID.normalize(id)
+        sid = Util::ID.require!(positional)
 
         cfg = Config.load
         client = Client.new(cfg)

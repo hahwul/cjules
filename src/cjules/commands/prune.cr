@@ -76,15 +76,7 @@ module Cjules
           return 2
         end
 
-        cutoff : Time? = nil
-        if o = older
-          if span = Util::Duration.parse(o)
-            cutoff = Time.utc - span
-          else
-            STDERR.puts "error: invalid duration: #{o}"
-            return 2
-          end
-        end
+        cutoff = older.try { |o| Util::Duration.cutoff!(o) }
 
         cfg = Config.load
         client = Client.new(cfg)
@@ -121,7 +113,7 @@ module Cjules
 
         failed_count = 0
         matched.each do |sess|
-          id = sess.id || sess.name.try(&.split("/").last)
+          id = sess.id.presence || sess.name.try(&.split("/").last.presence)
           next unless id
           begin
             API::Sessions.delete(client, id)

@@ -1,83 +1,52 @@
 require "yaml"
 
-SHARD_FILE     = "shard.yml"
-CJULES_FILE    = "src/cjules/version.cr"
-SNAPCRAFT_FILE = "snap/snapcraft.yaml"
-PKGBUILD_FILE  = "aur/PKGBUILD"
+# Every file that carries the release version: how to read it and how to rewrite it.
+record Target, label : String, path : String,
+  read : Proc(String, String?), write : Proc(String, String, String)
 
-def get_shard_version : String?
-  shard = YAML.parse(File.read(SHARD_FILE))
-  shard["version"].as_s
+TARGETS = [
+  Target.new("Shard", "shard.yml",
+    ->(c : String) : String? { YAML.parse(c)["version"].as_s },
+    ->(c : String, v : String) { c.gsub(/^(version:\s*)[\d.]+/m, "\\1#{v}") }),
+  Target.new("Cjules", "src/cjules/version.cr",
+    ->(c : String) : String? { c.match(/VERSION\s*=\s*"([^"]+)"/).try(&.[1]) },
+    ->(c : String, v : String) { c.gsub(/VERSION\s*=\s*"[^"]+"/, "VERSION = \"#{v}\"") }),
+  Target.new("Snapcraft", "snap/snapcraft.yaml",
+    ->(c : String) : String? { YAML.parse(c)["version"].as_s },
+    ->(c : String, v : String) { c.gsub(/^(version:\s*)['"]?[\d.]+['"]?/m, "\\1#{v}") }),
+  Target.new("PKGBUILD", "aur/PKGBUILD",
+    ->(c : String) : String? { c.match(/^pkgver=([\d.]+)/m).try(&.[1]) },
+    ->(c : String, v : String) { c.gsub(/^pkgver=[\d.]+/m, "pkgver=#{v}").gsub(/^pkgrel=\d+/m, "pkgrel=1") }),
+]
+
+def read_version(t : Target) : String?
+  t.read.call(File.read(t.path))
 rescue
   nil
 end
 
-def get_cjules_version : String?
-  content = File.read(CJULES_FILE)
-  match = content.match(/VERSION\s*=\s*"([^"]+)"/)
-  match ? match[1] : nil
-rescue
-  nil
-end
+found = TARGETS.map { |t| {t, read_version(t)} }
+unique_versions = found.compact_map(&.[1]).uniq!
 
-def get_snapcraft_version : String?
-  snapcraft = YAML.parse(File.read(SNAPCRAFT_FILE))
-  snapcraft["version"].as_s
-rescue
-  nil
-end
-
-def get_pkgbuild_version : String?
-  content = File.read(PKGBUILD_FILE)
-  match = content.match(/^pkgver=([\d.]+)/m)
-  match ? match[1] : nil
-rescue
-  nil
-end
-
-def update_shard_version(new_version : String) : Bool
-  content = File.read(SHARD_FILE)
-  updated = content.gsub(/^(version:\s*)[\d.]+/m, "\\1#{new_version}")
-  File.write(SHARD_FILE, updated)
-  true
-rescue ex
-  puts "  Error updating #{SHARD_FILE}: #{ex.message}"
-  false
-end
-
-def update_cjules_version(new_version : String) : Bool
-  content = File.read(CJULES_FILE)
-  updated = content.gsub(/VERSION\s*=\s*"[^"]+"/, "VERSION = \"#{new_version}\"")
-  File.write(CJULES_FILE, updated)
-  true
-rescue ex
-  puts "  Error updating #{CJULES_FILE}: #{ex.message}"
-  false
-end
-
-def update_snapcraft_version(new_version : String) : Bool
-  content = File.read(SNAPCRAFT_FILE)
-  updated = content.gsub(/^(version:\s*)['"]?[\d.]+['"]?/m, "\\1#{new_version}")
-  File.write(SNAPCRAFT_FILE, updated)
-  true
-rescue ex
-  puts "  Error updating #{SNAPCRAFT_FILE}: #{ex.message}"
-  false
-end
-
-def update_pkgbuild_version(new_version : String) : Bool
-  content = File.read(PKGBUILD_FILE)
-  updated = content.gsub(/^pkgver=[\d.]+/m, "pkgver=#{new_version}")
-  updated = updated.gsub(/^pkgrel=\d+/m, "pkgrel=1")
-  File.write(PKGBUILD_FILE, updated)
-  true
-rescue ex
-  puts "  Error updating #{PKGBUILD_FILE}: #{ex.message}"
-  false
-end
-
-def valid_version?(version : String) : Bool
-  !!(version =~ /^\d+\.\d+\.\d+$/)
+# `--check`: report versions and exit non-zero unless they all match.
+if ARGV.includes?("--check")
+  found.each { |t, v| puts "#{"#{t.label} version:".ljust(18)} #{v || "Not found"}" }
+  if unique_versions.empty?
+    puts "No versions found!"
+    exit 1
+  end
+  if found.any? { |_, ver| ver.nil? }
+    puts "Missing version in: #{found.compact_map { |t, ver| t.path unless ver }.join(", ")}"
+    exit 1
+  end
+  if unique_versions.size == 1
+    puts "All versions match: #{unique_versions.first}"
+  else
+    puts "Versions do not match!"
+    puts "Unique versions found: #{unique_versions.join(", ")}"
+    exit 1
+  end
+  exit 0
 end
 
 puts "=" * 50
@@ -85,20 +54,9 @@ puts "Cjules Version Update Tool"
 puts "=" * 50
 puts
 
-shard_v = get_shard_version
-cjules_v = get_cjules_version
-snapcraft_v = get_snapcraft_version
-pkgbuild_v = get_pkgbuild_version
-
 puts "Current versions:"
-puts "  #{SHARD_FILE.ljust(25)} #{shard_v || "Not found"}"
-puts "  #{CJULES_FILE.ljust(25)} #{cjules_v || "Not found"}"
-puts "  #{SNAPCRAFT_FILE.ljust(25)} #{snapcraft_v || "Not found"}"
-puts "  #{PKGBUILD_FILE.ljust(25)} #{pkgbuild_v || "Not found"}"
+found.each { |t, v| puts "  #{t.path.ljust(25)} #{v || "Not found"}" }
 puts
-
-versions = [shard_v, cjules_v, snapcraft_v, pkgbuild_v].compact
-unique_versions = versions.uniq
 
 if unique_versions.size > 1
   puts "Warning: Versions do not match!"
@@ -106,20 +64,20 @@ if unique_versions.size > 1
   puts
 end
 
-current_version = shard_v || cjules_v || snapcraft_v || "unknown"
+# PKGBUILD is deliberately not consulted for the current version.
+current_version = found.compact_map { |t, v| v unless t.label == "PKGBUILD" }.first? || "unknown"
 puts "Current version: #{current_version}"
 puts
 
 print "Enter new version (or press Enter to cancel): "
-input = gets
-new_version = input.try(&.strip) || ""
+new_version = gets.try(&.strip) || ""
 
 if new_version.empty?
   puts "Cancelled."
   exit 0
 end
 
-unless valid_version?(new_version)
+unless new_version.matches?(/^\d+\.\d+\.\d+$/)
   puts "Invalid version format. Please use semantic versioning (e.g., 1.2.3)"
   exit 1
 end
@@ -136,46 +94,19 @@ puts
 success_count = 0
 total_count = 0
 
-if shard_v
+found.each do |t, v|
   total_count += 1
-  print "  Updating #{SHARD_FILE}... "
-  if update_shard_version(new_version)
-    puts "ok"
-    success_count += 1
-  else
-    puts "fail"
+  print "  Updating #{t.path}... "
+  unless v
+    puts "fail (no version found)"
+    next
   end
-end
-
-if cjules_v
-  total_count += 1
-  print "  Updating #{CJULES_FILE}... "
-  if update_cjules_version(new_version)
+  begin
+    File.write(t.path, t.write.call(File.read(t.path), new_version))
     puts "ok"
     success_count += 1
-  else
-    puts "fail"
-  end
-end
-
-if snapcraft_v
-  total_count += 1
-  print "  Updating #{SNAPCRAFT_FILE}... "
-  if update_snapcraft_version(new_version)
-    puts "ok"
-    success_count += 1
-  else
-    puts "fail"
-  end
-end
-
-if pkgbuild_v
-  total_count += 1
-  print "  Updating #{PKGBUILD_FILE}... "
-  if update_pkgbuild_version(new_version)
-    puts "ok"
-    success_count += 1
-  else
+  rescue ex
+    puts "  Error updating #{t.path}: #{ex.message}"
     puts "fail"
   end
 end

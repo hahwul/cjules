@@ -11,6 +11,12 @@ module Cjules
     module Format
       extend self
 
+      # Models are JSON::Serializable only; YAML output goes through JSON::Any,
+      # which emits the same document YAML::Serializable would.
+      def yaml(obj) : String
+        JSON.parse(obj.to_json).to_yaml
+      end
+
       # Sessions ----------------------------------------------------
 
       def sessions(list : Array(Models::Session), format : String, io : IO = STDOUT)
@@ -20,7 +26,7 @@ module Cjules
         when "jsonl"
           list.each { |s| io.puts s.to_json }
         when "yaml"
-          io.puts list.to_yaml
+          io.puts yaml(list)
         when "table", "text"
           render_session_table(list, io)
         else
@@ -33,7 +39,7 @@ module Cjules
         when "json"
           io.puts s.to_json
         when "yaml"
-          io.puts s.to_yaml
+          io.puts yaml(s)
         else
           render_session_detail(s, io)
         end
@@ -43,7 +49,7 @@ module Cjules
         case format
         when "json"  then io.puts list.to_json
         when "jsonl" then list.each { |s| io.puts s.to_json }
-        when "yaml"  then io.puts list.to_yaml
+        when "yaml"  then io.puts yaml(list)
         when "table", "text"
           t = Table.new(["ID", "REPO", "DEFAULT", "PRIVATE"])
           list.each do |s|
@@ -66,7 +72,7 @@ module Cjules
       def source(s : Models::Source, format : String, io : IO = STDOUT)
         case format
         when "json" then io.puts s.to_json
-        when "yaml" then io.puts s.to_yaml
+        when "yaml" then io.puts yaml(s)
         else
           gh = s.githubRepo
           io.puts "#{Colors.bold("ID")}     : #{s.id}"
