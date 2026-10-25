@@ -43,15 +43,7 @@ module Cjules
             raise Cjules::UsageError.new("cannot mix positional IDs with bulk filters")
           end
           all = API::Sessions.list_all(client)
-          cutoff : Time? = nil
-          if o = older
-            if span = Util::Duration.parse(o)
-              cutoff = Time.utc - span
-            else
-              STDERR.puts "error: invalid duration: #{o}"
-              return 2
-            end
-          end
+          cutoff = older.try { |o| Util::Duration.cutoff!(o) }
           matched = all.select do |sess|
             Util::SessionFilter.matches?(sess,
               state: state, repo: repo_filter, older_than: cutoff)

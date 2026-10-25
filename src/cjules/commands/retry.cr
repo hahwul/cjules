@@ -40,25 +40,15 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
+        sid = Util::ID.require!(positional)
         sources_set = [prompt_override, prompt_file, template_name].count { |v| !v.nil? }
         if sources_set > 1
           STDERR.puts "error: --prompt, --prompt-file, and --template are mutually exclusive"
           return 2
         end
-        sid = Util::ID.normalize(id)
 
         if tn = template_name
-          tpath = Templates.find(tn)
-          unless tpath
-            STDERR.puts "error: no such template: #{tn} (looked in #{Templates.dir})"
-            return 1
-          end
-          prompt_file = tpath
+          prompt_file = Templates.find!(tn)
         end
 
         cfg = Config.load

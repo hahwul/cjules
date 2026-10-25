@@ -13,14 +13,6 @@ module Cjules
         Colorize.enabled = false
       end
 
-      def enable!
-        Colorize.enabled = true
-      end
-
-      def enabled? : Bool
-        Colorize.enabled?
-      end
-
       def red(s : String)
         s.colorize(:red).to_s
       end
@@ -85,11 +77,6 @@ module Cjules
           width += char_width(c)
         end
         width
-      end
-
-      # Backwards-compatible alias used by tables; same as display_width.
-      def visible_length(s : String) : Int32
-        display_width(s)
       end
 
       # Truncate a string to a maximum display width (cells), appending an

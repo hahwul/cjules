@@ -5,6 +5,7 @@ require "../client"
 require "../api"
 require "../util"
 require "../output/colors"
+require "../output/format"
 
 module Cjules
   module Commands
@@ -40,7 +41,7 @@ module Cjules
 
         case output
         when "json" then puts a.to_json
-        when "yaml" then puts a.to_yaml
+        when "yaml" then puts Output::Format.yaml(a)
         else
           render_text(a)
         end

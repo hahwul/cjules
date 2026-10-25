@@ -25,12 +25,11 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        raise Cjules::UsageError.new("session ID is required") if id.nil?
+        sid = Util::ID.require!(positional)
 
         cfg = Config.load
         client = Client.new(cfg)
-        sess = API::Sessions.get(client, Util::ID.normalize(id))
+        sess = API::Sessions.get(client, sid)
         Output::Format.session(sess, output)
         0
       end

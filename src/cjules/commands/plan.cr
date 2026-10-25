@@ -5,6 +5,7 @@ require "../client"
 require "../api"
 require "../util"
 require "../output/colors"
+require "../output/format"
 
 module Cjules
   module Commands
@@ -26,12 +27,7 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
-        sid = Util::ID.normalize(id)
+        sid = Util::ID.require!(positional)
 
         cfg = Config.load
         client = Client.new(cfg)
@@ -55,7 +51,7 @@ module Cjules
         when "json"
           puts(all ? plans.to_json : plans.last.to_json)
         when "yaml"
-          puts(all ? plans.to_yaml : plans.last.to_yaml)
+          puts Output::Format.yaml(all ? plans : plans.last)
         else
           chosen = all ? plans : [plans.last]
           chosen.each_with_index do |plan, i|

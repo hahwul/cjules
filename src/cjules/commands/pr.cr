@@ -22,15 +22,11 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
+        sid = Util::ID.require!(positional)
 
         cfg = Config.load
         client = Client.new(cfg)
-        sess = API::Sessions.get(client, Util::ID.normalize(id))
+        sess = API::Sessions.get(client, sid)
 
         url : String? = nil
         if outs = sess.outputs

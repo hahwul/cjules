@@ -309,10 +309,10 @@ describe Cjules::Util::PromptInput do
 end
 
 describe Cjules::Output::Colors do
-  it "strips ANSI codes when computing visible length" do
-    Cjules::Output::Colors.visible_length("\e[31mhello\e[0m").should eq(5)
-    Cjules::Output::Colors.visible_length("plain").should eq(5)
-    Cjules::Output::Colors.visible_length("\e[1;32mok\e[0m\e[2mzz\e[0m").should eq(4)
+  it "strips ANSI codes when computing display width" do
+    Cjules::Output::Colors.display_width("\e[31mhello\e[0m").should eq(5)
+    Cjules::Output::Colors.display_width("plain").should eq(5)
+    Cjules::Output::Colors.display_width("\e[1;32mok\e[0m\e[2mzz\e[0m").should eq(4)
   end
 
   it "counts CJK / fullwidth chars as 2 cells in display_width" do
@@ -335,7 +335,7 @@ describe Cjules::Output::Colors do
     Cjules::Output::Colors.state("COMPLETED").should eq("COMPLETED")
     Cjules::Output::Colors.state("FAILED").should eq("FAILED")
 
-    Cjules::Output::Colors.enable!
+    Colorize.enabled = true
     Cjules::Output::Colors.state("COMPLETED").should contain("\e[32m")
     Cjules::Output::Colors.state("FAILED").should contain("\e[31m")
     Cjules::Output::Colors.state("IN_PROGRESS").should contain("\e[34m")
@@ -813,9 +813,50 @@ describe Cjules::API::Sessions do
       stub_jules(:get, "/v1alpha/sessions?pageSize=100", body: %({"sessions":[{"id":"s1","state":"QUEUED"}],"nextPageToken":""} ))
 
       client = Cjules::Client.new(cfg)
-      page = Cjules::API::Sessions.list_page(client, 100)
-      page.sessions.not_nil!.size.should eq(1)
-      page.sessions.not_nil![0].id.should eq("s1")
+      sessions = Cjules::API::Sessions.list_all(client)
+      sessions.size.should eq(1)
+      sessions[0].id.should eq("s1")
     end
+  end
+
+  it "follows nextPageToken across pages and stops at limit" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sessions?pageSize=100", body: %({"sessions":[{"id":"s1"},{"id":"s2"}],"nextPageToken":"p2"}))
+      stub_jules(:get, "/v1alpha/sessions?pageSize=100&pageToken=p2", body: %({"sessions":[{"id":"s3"}]}))
+
+      client = Cjules::Client.new(cfg)
+      Cjules::API::Sessions.list_all(client).compact_map(&.id).should eq(%w[s1 s2 s3])
+      Cjules::API::Sessions.list_all(client, 2).compact_map(&.id).should eq(%w[s1 s2])
+    end
+  end
+end
+
+describe Cjules::API::Sources do
+  it "sends filter after the paging params on every page" do
+    with_webmock do
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      stub_jules(:get, "/v1alpha/sources?pageSize=100&filter=x", body: %({"sources":[{"id":"a"}],"nextPageToken":"p2"}))
+      stub_jules(:get, "/v1alpha/sources?pageSize=100&pageToken=p2&filter=x", body: %({"sources":[{"id":"b"}]}))
+
+      client = Cjules::Client.new(cfg)
+      Cjules::API::Sources.list_all(client, "x").compact_map(&.id).should eq(%w[a b])
+    end
+  end
+end
+
+describe Cjules::Util::ID do
+  it "require! normalizes the first positional and raises UsageError when missing" do
+    Cjules::Util::ID.require!(["sessions/abc"]).should eq("abc")
+    expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!([] of String) }
+    expect_raises(Cjules::UsageError, "source ID is required") { Cjules::Util::ID.require!([] of String, "source ID") }
+  end
+end
+
+describe Cjules::Util::Duration do
+  it "cutoff! subtracts the span from now and raises UsageError on bad input" do
+    (Time.utc - Cjules::Util::Duration.cutoff!("1h")).should be_close(1.hour, 5.seconds)
+    expect_raises(Cjules::UsageError, "invalid duration: zz") { Cjules::Util::Duration.cutoff!("zz") }
+    expect_raises(Cjules::UsageError, "custom") { Cjules::Util::Duration.cutoff!("zz", "custom") }
   end
 end

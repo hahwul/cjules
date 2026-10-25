@@ -15,7 +15,7 @@ module Cjules
         widths = @headers.map(&.size)
         @rows.each do |row|
           row.each_with_index do |cell, i|
-            len = Colors.visible_length(cell)
+            len = Colors.display_width(cell)
             widths[i] = len if i < widths.size && len > widths[i]
           end
         end
@@ -36,7 +36,7 @@ module Cjules
       end
 
       private def pad(s : String, width : Int32) : String
-        diff = width - Colors.visible_length(s)
+        diff = width - Colors.display_width(s)
         diff <= 0 ? s : s + " " * diff
       end
     end

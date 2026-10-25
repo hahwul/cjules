@@ -60,12 +60,7 @@ module Cjules
             STDERR.puts "error: --template and --file are mutually exclusive"
             return 2
           end
-          tpath = Templates.find(tn)
-          unless tpath
-            STDERR.puts "error: no such template: #{tn} (looked in #{Templates.dir})"
-            return 1
-          end
-          file = tpath
+          file = Templates.find!(tn)
         end
 
         prompt_arg = positional[0]?
@@ -137,7 +132,7 @@ module Cjules
 
         case output
         when "json" then puts successes.to_json
-        when "yaml" then puts successes.to_yaml
+        when "yaml" then puts Output::Format.yaml(successes)
         else
           successes.each do |s|
             puts "#{Output::Colors.bold(s.short_id)}  #{Output::Colors.state(s.state || "QUEUED")}  #{s.url}"
@@ -208,9 +203,8 @@ module Cjules
       private def fetch_sessions_since(client : Client, cutoff : Time) : Array(Models::Session)
         result = [] of Models::Session
         begin
-          token : String? = nil
-          loop do
-            page = API::Sessions.list_page(client, 100, token)
+          API.each_page(client, "/v1alpha/sessions") do |body|
+            page = Models::ListSessionsResponse.from_json(body)
             if items = page.sessions
               items.each do |sess|
                 if ct = sess.createTime
@@ -225,8 +219,7 @@ module Cjules
                 result << sess
               end
             end
-            token = page.nextPageToken
-            break if token.nil? || token.empty?
+            page.nextPageToken
           end
         rescue Client::APIError | Socket::Error | IO::Error | JSON::ParseException
           # Reconciliation lookup failed — fall through with whatever we
