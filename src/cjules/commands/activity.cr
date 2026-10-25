@@ -25,15 +25,13 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        sid_arg = positional[0]?
-        aid_arg = positional[1]?
-        unless sid_arg && aid_arg
+        sid = positional[0]?.try { |s| Util::ID.normalize(s).presence }
+        aid = positional[1]?.try(&.split("/").last.presence)
+        unless sid && aid
           STDERR.puts "error: session ID and activity ID are required"
           STDERR.puts "usage: cjules activity <SESSION_ID> <ACTIVITY_ID>"
           return 2
         end
-        sid = Util::ID.normalize(sid_arg)
-        aid = aid_arg.starts_with?("sessions/") ? aid_arg.split("/").last : aid_arg
 
         cfg = Config.load
         client = Client.new(cfg)

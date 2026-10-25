@@ -1,6 +1,7 @@
 require "json"
 require "./client"
 require "./models"
+require "./errors"
 
 module Cjules
   module API
@@ -15,6 +16,12 @@ module Cjules
         token = yield client.get(path, q)
         break if token.nil? || token.empty?
       end
+    end
+
+    # Guard every resource path: an empty ID would address the collection
+    # itself (e.g. DELETE /v1alpha/sessions/).
+    def self.id!(id : String) : String
+      id.presence || raise Cjules::UsageError.new("empty resource ID")
     end
 
     module Sessions
@@ -36,7 +43,7 @@ module Cjules
       end
 
       def get(client : Client, id : String) : Models::Session
-        body = client.get("/v1alpha/sessions/#{id}")
+        body = client.get("/v1alpha/sessions/#{API.id!(id)}")
         Models::Session.from_json(body)
       end
 
@@ -46,16 +53,16 @@ module Cjules
       end
 
       def delete(client : Client, id : String) : Nil
-        client.delete("/v1alpha/sessions/#{id}")
+        client.delete("/v1alpha/sessions/#{API.id!(id)}")
       end
 
       def send_message(client : Client, id : String, prompt : String) : Nil
         body = JSON.build { |j| j.object { j.field "prompt", prompt } }
-        client.post("/v1alpha/sessions/#{id}:sendMessage", body)
+        client.post("/v1alpha/sessions/#{API.id!(id)}:sendMessage", body)
       end
 
       def approve_plan(client : Client, id : String) : Nil
-        client.post("/v1alpha/sessions/#{id}:approvePlan", "{}")
+        client.post("/v1alpha/sessions/#{API.id!(id)}:approvePlan", "{}")
       end
     end
 
@@ -73,7 +80,7 @@ module Cjules
       end
 
       def get(client : Client, id : String) : Models::Source
-        body = client.get("/v1alpha/sources/#{id}")
+        body = client.get("/v1alpha/sources/#{API.id!(id)}")
         Models::Source.from_json(body)
       end
     end
@@ -83,7 +90,7 @@ module Cjules
 
       def list_all(client : Client, session_id : String) : Array(Models::Activity)
         result = [] of Models::Activity
-        API.each_page(client, "/v1alpha/sessions/#{session_id}/activities") do |body|
+        API.each_page(client, "/v1alpha/sessions/#{API.id!(session_id)}/activities") do |body|
           page = Models::ListActivitiesResponse.from_json(body)
           page.activities.try { |items| result.concat(items) }
           page.nextPageToken
@@ -92,7 +99,7 @@ module Cjules
       end
 
       def get(client : Client, session_id : String, activity_id : String) : Models::Activity
-        body = client.get("/v1alpha/sessions/#{session_id}/activities/#{activity_id}")
+        body = client.get("/v1alpha/sessions/#{API.id!(session_id)}/activities/#{API.id!(activity_id)}")
         Models::Activity.from_json(body)
       end
     end

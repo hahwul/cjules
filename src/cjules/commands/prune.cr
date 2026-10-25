@@ -113,7 +113,7 @@ module Cjules
 
         failed_count = 0
         matched.each do |sess|
-          id = sess.id || sess.name.try(&.split("/").last)
+          id = sess.id.presence || sess.name.try(&.split("/").last.presence)
           next unless id
           begin
             API::Sessions.delete(client, id)

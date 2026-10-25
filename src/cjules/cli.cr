@@ -1,3 +1,4 @@
+require "option_parser"
 require "./version"
 require "./errors"
 require "./config"
@@ -43,7 +44,9 @@ module Cjules
         elsif a == "--account" || a.starts_with?("--account=")
           inline = a != "--account"
           val = inline ? a["--account=".size..] : argv[i + 1]?
-          if val.nil? || val.empty?
+          # `--account --no-color` means the value is missing, not an alias
+          # named "--no-color" (single-dash aliases like `-work` still work).
+          if val.nil? || val.empty? || (!inline && val.starts_with?("--"))
             STDERR.puts "error: --account requires a value"
             return 2
           end
@@ -110,7 +113,7 @@ module Cjules
       rescue e : Cjules::ConfigError
         STDERR.puts "error: #{e.message}"
         1
-      rescue e : Cjules::UsageError
+      rescue e : Cjules::UsageError | OptionParser::Exception
         STDERR.puts "error: #{e.message}"
         2
       end

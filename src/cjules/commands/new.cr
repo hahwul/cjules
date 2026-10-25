@@ -41,7 +41,7 @@ module Cjules
           p.on("--var KEY=VALUE", "Define a template variable (can be used multiple times)") { |v| var_args << v }
           p.on("--auto-pr", "Set automationMode=AUTO_CREATE_PR") { auto_pr = true }
           p.on("--require-approval", "Require explicit plan approval") { require_approval = true }
-          p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = v.to_i }
+          p.on("--parallel N", "Create N concurrent sessions with the same prompt (account plan may limit N)") { |v| parallel = Util.int_flag!("--parallel", v) }
           p.on("--no-reconcile-on-error", "Do not look up matching recent sessions after a 4xx; just report the error") { reconcile_on_error = false }
           p.on("-f FMT", "--format=FMT", "Output format: text, json, yaml") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }

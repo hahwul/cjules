@@ -35,6 +35,10 @@ if ARGV.includes?("--check")
     puts "No versions found!"
     exit 1
   end
+  if found.any? { |_, ver| ver.nil? }
+    puts "Missing version in: #{found.compact_map { |t, ver| t.path unless ver }.join(", ")}"
+    exit 1
+  end
   if unique_versions.size == 1
     puts "All versions match: #{unique_versions.first}"
   else
@@ -91,9 +95,12 @@ success_count = 0
 total_count = 0
 
 found.each do |t, v|
-  next unless v
   total_count += 1
   print "  Updating #{t.path}... "
+  unless v
+    puts "fail (no version found)"
+    next
+  end
   begin
     File.write(t.path, t.write.call(File.read(t.path), new_version))
     puts "ok"
