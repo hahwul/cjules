@@ -1,18 +1,15 @@
 require "json"
-require "yaml"
 
 module Cjules
   module Models
     class GitHubBranch
       include JSON::Serializable
-      include YAML::Serializable
 
       property displayName : String?
     end
 
     class GitHubRepo
       include JSON::Serializable
-      include YAML::Serializable
 
       property owner : String?
       property repo : String?
@@ -23,7 +20,6 @@ module Cjules
 
     class Source
       include JSON::Serializable
-      include YAML::Serializable
 
       property name : String?
       property id : String?
@@ -32,14 +28,12 @@ module Cjules
 
     class GitHubRepoContext
       include JSON::Serializable
-      include YAML::Serializable
 
       property startingBranch : String?
     end
 
     class SourceContext
       include JSON::Serializable
-      include YAML::Serializable
 
       property source : String?
       property githubRepoContext : GitHubRepoContext?
@@ -47,7 +41,6 @@ module Cjules
 
     class PullRequest
       include JSON::Serializable
-      include YAML::Serializable
 
       property url : String?
       property title : String?
@@ -56,14 +49,12 @@ module Cjules
 
     class SessionOutput
       include JSON::Serializable
-      include YAML::Serializable
 
       property pullRequest : PullRequest?
     end
 
     class Session
       include JSON::Serializable
-      include YAML::Serializable
 
       property name : String?
       property id : String?
@@ -95,7 +86,6 @@ module Cjules
 
     class Plan
       include JSON::Serializable
-      include YAML::Serializable
 
       property id : String?
       property steps : Array(PlanStep)?
@@ -104,7 +94,6 @@ module Cjules
 
     class PlanStep
       include JSON::Serializable
-      include YAML::Serializable
 
       property id : String?
       property index : Int32?
@@ -114,7 +103,6 @@ module Cjules
 
     class GitPatch
       include JSON::Serializable
-      include YAML::Serializable
 
       property baseCommitId : String?
       property unidiffPatch : String?
@@ -123,7 +111,6 @@ module Cjules
 
     class ChangeSet
       include JSON::Serializable
-      include YAML::Serializable
 
       property source : String?
       property gitPatch : GitPatch?
@@ -131,7 +118,6 @@ module Cjules
 
     class BashOutput
       include JSON::Serializable
-      include YAML::Serializable
 
       property command : String?
       property output : String?
@@ -140,7 +126,6 @@ module Cjules
 
     class Media
       include JSON::Serializable
-      include YAML::Serializable
 
       property mimeType : String?
       property data : String?
@@ -148,7 +133,6 @@ module Cjules
 
     class Artifact
       include JSON::Serializable
-      include YAML::Serializable
 
       property changeSet : ChangeSet?
       property bashOutput : BashOutput?
@@ -157,35 +141,30 @@ module Cjules
 
     class PlanGenerated
       include JSON::Serializable
-      include YAML::Serializable
 
       property plan : Plan?
     end
 
     class PlanApproved
       include JSON::Serializable
-      include YAML::Serializable
 
       property planId : String?
     end
 
     class UserMessaged
       include JSON::Serializable
-      include YAML::Serializable
 
       property userMessage : String?
     end
 
     class AgentMessaged
       include JSON::Serializable
-      include YAML::Serializable
 
       property agentMessage : String?
     end
 
     class ProgressUpdated
       include JSON::Serializable
-      include YAML::Serializable
 
       property title : String?
       property description : String?
@@ -193,19 +172,16 @@ module Cjules
 
     class SessionCompleted
       include JSON::Serializable
-      include YAML::Serializable
     end
 
     class SessionFailed
       include JSON::Serializable
-      include YAML::Serializable
 
       property reason : String?
     end
 
     class Activity
       include JSON::Serializable
-      include YAML::Serializable
 
       property name : String?
       property id : String?

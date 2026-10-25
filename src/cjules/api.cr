@@ -4,30 +4,33 @@ require "./models"
 
 module Cjules
   module API
+    # Follows nextPageToken (100 items per page) until exhausted. Yields each
+    # page's raw JSON body; the block returns that page's nextPageToken.
+    def self.each_page(client : Client, path : String, extra : Hash(String, String)? = nil, &)
+      token : String? = nil
+      loop do
+        q = {"pageSize" => "100"}
+        q["pageToken"] = token if token && !token.empty?
+        q.merge!(extra) if extra
+        token = yield client.get(path, q)
+        break if token.nil? || token.empty?
+      end
+    end
+
     module Sessions
       extend self
 
-      def list_page(client : Client, page_size : Int32? = nil, page_token : String? = nil) : Models::ListSessionsResponse
-        q = {} of String => String
-        q["pageSize"] = page_size.to_s if page_size
-        q["pageToken"] = page_token if page_token && !page_token.empty?
-        body = client.get("/v1alpha/sessions", q.empty? ? nil : q)
-        Models::ListSessionsResponse.from_json(body)
-      end
-
       def list_all(client : Client, limit : Int32? = nil) : Array(Models::Session)
         result = [] of Models::Session
-        token : String? = nil
-        loop do
-          page = list_page(client, 100, token)
+        API.each_page(client, "/v1alpha/sessions") do |body|
+          page = Models::ListSessionsResponse.from_json(body)
           if items = page.sessions
             items.each do |s|
               result << s
               return result if limit && result.size >= limit
             end
           end
-          token = page.nextPageToken
-          break if token.nil? || token.empty?
+          page.nextPageToken
         end
         result
       end
@@ -59,25 +62,12 @@ module Cjules
     module Sources
       extend self
 
-      def list_page(client : Client, page_size : Int32? = nil, page_token : String? = nil, filter : String? = nil) : Models::ListSourcesResponse
-        q = {} of String => String
-        q["pageSize"] = page_size.to_s if page_size
-        q["pageToken"] = page_token if page_token && !page_token.empty?
-        q["filter"] = filter if filter
-        body = client.get("/v1alpha/sources", q.empty? ? nil : q)
-        Models::ListSourcesResponse.from_json(body)
-      end
-
       def list_all(client : Client, filter : String? = nil) : Array(Models::Source)
         result = [] of Models::Source
-        token : String? = nil
-        loop do
-          page = list_page(client, 100, token, filter)
-          if items = page.sources
-            items.each { |s| result << s }
-          end
-          token = page.nextPageToken
-          break if token.nil? || token.empty?
+        API.each_page(client, "/v1alpha/sources", filter ? {"filter" => filter} : nil) do |body|
+          page = Models::ListSourcesResponse.from_json(body)
+          page.sources.try { |items| result.concat(items) }
+          page.nextPageToken
         end
         result
       end
@@ -91,24 +81,12 @@ module Cjules
     module Activities
       extend self
 
-      def list_page(client : Client, session_id : String, page_size : Int32? = nil, page_token : String? = nil) : Models::ListActivitiesResponse
-        q = {} of String => String
-        q["pageSize"] = page_size.to_s if page_size
-        q["pageToken"] = page_token if page_token && !page_token.empty?
-        body = client.get("/v1alpha/sessions/#{session_id}/activities", q.empty? ? nil : q)
-        Models::ListActivitiesResponse.from_json(body)
-      end
-
       def list_all(client : Client, session_id : String) : Array(Models::Activity)
         result = [] of Models::Activity
-        token : String? = nil
-        loop do
-          page = list_page(client, session_id, 100, token)
-          if items = page.activities
-            items.each { |a| result << a }
-          end
-          token = page.nextPageToken
-          break if token.nil? || token.empty?
+        API.each_page(client, "/v1alpha/sessions/#{session_id}/activities") do |body|
+          page = Models::ListActivitiesResponse.from_json(body)
+          page.activities.try { |items| result.concat(items) }
+          page.nextPageToken
         end
         result
       end

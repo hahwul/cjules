@@ -64,7 +64,7 @@ module Cjules
           return 2
         end
         cfg = Config.load
-        unless cfg.has_account?(target)
+        unless cfg.accounts.has_key?(target)
           STDERR.puts "error: no such account: #{target}"
           STDERR.puts "  saved: #{cfg.accounts.keys.join(", ")}" unless cfg.accounts.empty?
           return 1

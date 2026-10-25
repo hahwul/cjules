@@ -148,10 +148,6 @@ module Cjules
       end
     end
 
-    def add_account(alias_name : String, key : String) : Nil
-      @accounts[alias_name] = key
-    end
-
     # Find an existing alias holding this exact key (excluding self).
     def alias_for_key(key : String, except : String? = nil) : String?
       @accounts.each do |a, k|
@@ -165,10 +161,6 @@ module Cjules
       removed = @accounts.delete(alias_name)
       @current = nil if @current == alias_name
       !removed.nil?
-    end
-
-    def has_account?(alias_name : String) : Bool
-      @accounts.has_key?(alias_name)
     end
 
     def require_api_key! : String

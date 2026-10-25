@@ -54,6 +54,11 @@ module Cjules
       def normalize(id : String) : String
         id.sub(/^sessions\//, "").sub(/^sources\//, "")
       end
+
+      # First positional arg, normalized; raises UsageError when missing.
+      def require!(args : Array(String), what : String = "session ID") : String
+        normalize(args[0]? || raise Cjules::UsageError.new("#{what} is required"))
+      end
     end
 
     module Duration
@@ -71,6 +76,11 @@ module Cjules
           when "w" then n.weeks
           end
         end
+      end
+
+      # `Time.utc` minus the parsed span; raises UsageError with `error` when unparseable.
+      def cutoff!(s : String, error : String = "invalid duration: #{s}") : Time
+        Time.utc - (parse(s) || raise Cjules::UsageError.new(error))
       end
 
       def humanize(span : Time::Span) : String

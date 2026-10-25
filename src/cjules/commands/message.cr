@@ -22,17 +22,13 @@ module Cjules
         end
         parser.parse(args.dup)
 
-        id = positional[0]?
-        unless id
-          STDERR.puts "error: session ID is required"
-          return 2
-        end
+        sid = Util::ID.require!(positional)
         text_arg = positional[1]?
         text = Util::PromptInput.resolve(text_arg, file)
 
         cfg = Config.load
         client = Client.new(cfg)
-        API::Sessions.send_message(client, Util::ID.normalize(id), text)
+        API::Sessions.send_message(client, sid, text)
         puts "message sent"
         0
       end

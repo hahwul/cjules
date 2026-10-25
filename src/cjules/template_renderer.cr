@@ -12,10 +12,8 @@ module Cjules
 
     # Render a template string with variable substitution
     def render(template : String, vars : Variables = Variables.new) : String
-      result = template.dup
-
       # Process {{.File "path"}} directives
-      result = process_file_directives(result)
+      result = process_file_directives(template)
 
       # Process {{.GitDiff}} directives (compute diff once and reuse)
       if result.includes?("{{.GitDiff}}")
@@ -50,12 +48,6 @@ module Cjules
         # Extract path from either double or single quotes
         path = $~[1]? || $~[2]
         read_file(path)
-      end
-    end
-
-    private def process_git_diff_directives(content : String) : String
-      content.gsub(/\{\{\.GitDiff\}\}/) do
-        get_git_diff
       end
     end
 

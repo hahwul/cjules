@@ -32,7 +32,7 @@ module Cjules
 
         chosen_id : String? = nil
 
-        if has_fzf?
+        if Process.find_executable("fzf")
           lines = sessions.compact_map do |s|
             sid = s.id
             next unless sid
@@ -79,14 +79,6 @@ module Cjules
           STDERR.puts "unknown --action: #{action}"
           2
         end
-      end
-
-      private def has_fzf? : Bool
-        Process.run("which", ["fzf"],
-          output: Process::Redirect::Close,
-          error: Process::Redirect::Close).success?
-      rescue Exception
-        false
       end
 
       private def run_fzf(input : String) : String?

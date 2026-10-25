@@ -1,5 +1,6 @@
 require "../help"
 require "../config"
+require "../errors"
 
 module Cjules
   module Commands
@@ -21,6 +22,10 @@ module Cjules
           return path if File.file?(path)
         end
         nil
+      end
+
+      def find!(name : String) : String
+        find(name) || raise Cjules::ConfigError.new("no such template: #{name} (looked in #{dir})")
       end
 
       def list : Array(String)

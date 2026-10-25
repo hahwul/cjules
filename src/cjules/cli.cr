@@ -40,8 +40,9 @@ module Cjules
         if a == "--no-color"
           Output::Colors.disable!
           argv.delete_at(i)
-        elsif a == "--account"
-          val = argv[i + 1]?
+        elsif a == "--account" || a.starts_with?("--account=")
+          inline = a != "--account"
+          val = inline ? a["--account=".size..] : argv[i + 1]?
           if val.nil? || val.empty?
             STDERR.puts "error: --account requires a value"
             return 2
@@ -51,19 +52,7 @@ module Cjules
             return 2
           end
           ENV["JULES_ACCOUNT"] = val
-          argv.delete_at(i + 1)
-          argv.delete_at(i)
-        elsif a.starts_with?("--account=")
-          val = a["--account=".size..]
-          if val.empty?
-            STDERR.puts "error: --account requires a value"
-            return 2
-          end
-          unless Config.valid_alias?(val)
-            STDERR.puts "error: --account value must match [A-Za-z0-9._-]+ (got #{val.inspect})"
-            return 2
-          end
-          ENV["JULES_ACCOUNT"] = val
+          argv.delete_at(i + 1) unless inline
           argv.delete_at(i)
         else
           i += 1

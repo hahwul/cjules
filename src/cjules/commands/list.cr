@@ -37,23 +37,16 @@ module Cjules
         cfg = Config.load
         client = Client.new(cfg)
 
-        cutoff : Time? = nil
-        if s = since
-          span = Util::Duration.parse(s)
-          if span.nil?
-            STDERR.puts "error: invalid --since duration: #{s.inspect} (expected e.g. 30s, 5m, 2h, 7d, 1w)"
-            return 2
-          end
-          cutoff = Time.utc - span
+        cutoff = since.try do |s|
+          Util::Duration.cutoff!(s, "invalid --since duration: #{s.inspect} (expected e.g. 30s, 5m, 2h, 7d, 1w)")
         end
 
         # Paginate; stop early when --since cutoff is exceeded (API returns newest-first),
         # or when we have enough post-filter matches (unless --all).
         filtered = [] of Models::Session
-        token : String? = nil
         stop_paging = false
-        loop do
-          page = API::Sessions.list_page(client, 100, token)
+        API.each_page(client, "/v1alpha/sessions") do |body|
+          page = Models::ListSessionsResponse.from_json(body)
           if items = page.sessions
             items.each do |sess|
               if c = cutoff
@@ -75,8 +68,7 @@ module Cjules
             end
           end
           break if stop_paging
-          token = page.nextPageToken
-          break if token.nil? || token.empty?
+          page.nextPageToken
         end
 
         filtered = filtered[0...limit] unless all || filtered.size <= limit
