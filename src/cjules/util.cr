@@ -4,6 +4,12 @@ require "./errors"
 
 module Cjules
   module Util
+    # Parse an integer flag value, raising UsageError (exit 2) instead of
+    # letting String#to_i's ArgumentError escape as an unhandled exception.
+    def self.int_flag!(flag : String, value : String) : Int32
+      value.to_i? || raise Cjules::UsageError.new("invalid #{flag} value: #{value.inspect} (expected an integer)")
+    end
+
     module SessionFilter
       extend self
 
@@ -56,8 +62,10 @@ module Cjules
       end
 
       # First positional arg, normalized; raises UsageError when missing.
+      # An empty ID would address the collection itself (e.g. GET/DELETE
+      # /v1alpha/sessions/), so it counts as missing.
       def require!(args : Array(String), what : String = "session ID") : String
-        normalize(args[0]? || raise Cjules::UsageError.new("#{what} is required"))
+        normalize(args[0]? || "").presence || raise Cjules::UsageError.new("#{what} is required")
       end
     end
 

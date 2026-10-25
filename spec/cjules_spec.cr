@@ -502,6 +502,28 @@ describe Cjules::Config do
       end
     end
 
+    it "round-trips aliases and keys that look like numbers or booleans" do
+      with_isolated_home do
+        cfg = Cjules::Config.new(current: "2024", accounts: {"2024" => "12345678", "true" => "null", "1.5" => "K"})
+        cfg.save
+
+        loaded = Cjules::Config.load
+        loaded.current.should eq("2024")
+        loaded.accounts.should eq({"2024" => "12345678", "true" => "null", "1.5" => "K"})
+      end
+    end
+
+    it "recovers unquoted numeric/boolean entries written by older versions" do
+      with_isolated_home do |tmp|
+        Dir.mkdir_p(File.join(tmp, ".config", "cjules"))
+        File.write(Cjules::Config.path, "current: 2024\naccounts:\n  2024: 12345678\n  true: K\n")
+
+        loaded = Cjules::Config.load
+        loaded.current.should eq("2024")
+        loaded.accounts.should eq({"2024" => "12345678", "true" => "K"})
+      end
+    end
+
     it "drops nil default_repo / default_branch on save" do
       with_isolated_home do
         cfg = Cjules::Config.new(default_repo: "foo/bar", current: "x", accounts: {"x" => "K"})
@@ -728,6 +750,32 @@ describe Cjules::TemplateRenderer do
       end
     end
 
+    it "does not re-expand directive-like text inside variable values" do
+      vars = {"a" => "{{.Var \"b\"}}", "b" => "B"}
+      Cjules::TemplateRenderer.render("{{.Var \"a\"}}", vars).should eq("{{.Var \"b\"}}")
+    end
+
+    it "still expands directives inside included files (partials)" do
+      with_isolated_home do |tmp|
+        partial = File.join(tmp, "partial.md")
+        File.write(partial, "hi {{.Var \"name\"}}")
+        Cjules::TemplateRenderer.render("{{.File \"#{partial}\"}}", {"name" => "Dana"}).should eq("hi Dana")
+      end
+    end
+
+    it "inserts git diff output verbatim, without expanding directives in it" do
+      with_isolated_home do |tmp|
+        Dir.cd(tmp) do
+          system("git init -q && git config user.email t@t && git config user.name t")
+          File.write("f.txt", "old\n")
+          system("git add f.txt && git commit -qm init")
+          File.write("f.txt", "{{.Var \"name\"}}\n")
+          result = Cjules::TemplateRenderer.render("{{.GitDiff}}", {"name" => "X"})
+          result.should contain("+{{.Var \"name\"}}")
+        end
+      end
+    end
+
     it "preserves template content around directives" do
       template = "Before {{.Var \"x\"}} middle {{.Var \"y\"}} after"
       vars = {"x" => "X", "y" => "Y"}
@@ -849,7 +897,33 @@ describe Cjules::Util::ID do
   it "require! normalizes the first positional and raises UsageError when missing" do
     Cjules::Util::ID.require!(["sessions/abc"]).should eq("abc")
     expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!([] of String) }
+    expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!([""]) }
+    expect_raises(Cjules::UsageError, "session ID is required") { Cjules::Util::ID.require!(["sessions/"]) }
     expect_raises(Cjules::UsageError, "source ID is required") { Cjules::Util::ID.require!([] of String, "source ID") }
+  end
+end
+
+describe "Cjules::Util.int_flag!" do
+  it "parses integers and raises UsageError otherwise" do
+    Cjules::Util.int_flag!("--limit", "5").should eq(5)
+    expect_raises(Cjules::UsageError, %(invalid --limit value: "abc")) { Cjules::Util.int_flag!("--limit", "abc") }
+  end
+end
+
+describe Cjules::CLI do
+  it "exits 2 with a usage error for bad flags instead of crashing" do
+    with_isolated_home do
+      Cjules::CLI.run(["ls", "--limit", "abc"]).should eq(2)
+      Cjules::CLI.run(["ls", "--bogus"]).should eq(2)
+      Cjules::CLI.run(["watch", "x", "--interval"]).should eq(2)
+    end
+  end
+
+  it "treats a flag after --account as a missing value" do
+    with_isolated_home do
+      Cjules::CLI.run(["--account", "--no-color", "ls"]).should eq(2)
+      ENV["JULES_ACCOUNT"]?.should be_nil
+    end
   end
 end
 

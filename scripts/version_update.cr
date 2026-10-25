@@ -35,6 +35,10 @@ if ARGV.includes?("--check")
     puts "No versions found!"
     exit 1
   end
+  if found.any? { |_, ver| ver.nil? }
+    puts "Missing version in: #{found.compact_map { |t, ver| t.path unless ver }.join(", ")}"
+    exit 1
+  end
   if unique_versions.size == 1
     puts "All versions match: #{unique_versions.first}"
   else

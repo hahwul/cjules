@@ -78,8 +78,8 @@ module Cjules
             if accounts = data["accounts"]?
               if h = accounts.as_h?
                 h.each do |k, v|
-                  key = k.as_s? || next
-                  val = v.as_s? || next
+                  key = scalar_s(k) || next
+                  val = scalar_s(v) || next
                   next if key.empty? || val.empty?
                   cfg.accounts[key] = val
                 end
@@ -105,9 +105,21 @@ module Cjules
 
     private def self.nonempty(node : YAML::Any?) : String?
       return unless node
-      s = node.as_s?
-      return if s.nil? || s.empty?
-      s
+      scalar_s(node).presence
+    end
+
+    # Older versions wrote values unquoted, so an all-digit or true/false
+    # alias/key reads back as Int64/Bool. Accept those as their text form
+    # (lossy only for oddities like leading zeros).
+    private def self.scalar_s(node : YAML::Any) : String?
+      node.as_s? || (node.raw.is_a?(Int64 | Bool) ? node.raw.to_s : nil)
+    end
+
+    # Quote strings the YAML core schema would otherwise parse as
+    # numbers/bools/null, so they round-trip as strings.
+    private def scalar(y : YAML::Builder, value : String) : Nil
+      style = YAML::Schema::Core.reserved_string?(value) ? YAML::ScalarStyle::DOUBLE_QUOTED : YAML::ScalarStyle::ANY
+      y.scalar value, style: style
     end
 
     def save
@@ -118,24 +130,24 @@ module Cjules
           YAML.build(io) do |y|
             y.mapping do
               y.scalar "api_base"
-              y.scalar @api_base
+              scalar(y, @api_base)
               if v = @default_repo
                 y.scalar "default_repo"
-                y.scalar v
+                scalar(y, v)
               end
               if v = @default_branch
                 y.scalar "default_branch"
-                y.scalar v
+                scalar(y, v)
               end
               if v = @current
                 y.scalar "current"
-                y.scalar v
+                scalar(y, v)
               end
               y.scalar "accounts"
               y.mapping do
                 @accounts.each do |k, val|
-                  y.scalar k
-                  y.scalar val
+                  scalar(y, k)
+                  scalar(y, val)
                 end
               end
             end
