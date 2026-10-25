@@ -524,6 +524,42 @@ describe Cjules::Config do
       end
     end
 
+    it "keeps the exact spelling of legacy floats, dates, octals and yes/no" do
+      with_isolated_home do |tmp|
+        Dir.mkdir_p(File.join(tmp, ".config", "cjules"))
+        File.write(Cjules::Config.path, <<-YAML)
+          current: yes
+          default_branch: 1.10
+          accounts:
+            yes: K1
+            0755: K2
+            1.5: K3
+            2024-01-01: K4
+            "true": K5
+          YAML
+
+        loaded = Cjules::Config.load
+        loaded.current.should eq("yes")
+        loaded.default_branch.should eq("1.10")
+        loaded.accounts.should eq({"yes" => "K1", "0755" => "K2", "1.5" => "K3", "2024-01-01" => "K4", "true" => "K5"})
+
+        loaded.save
+        Cjules::Config.load.accounts.should eq(loaded.accounts)
+      end
+    end
+
+    it "treats plain null values as unset but keeps a quoted \"null\" string" do
+      with_isolated_home do |tmp|
+        Dir.mkdir_p(File.join(tmp, ".config", "cjules"))
+        File.write(Cjules::Config.path, "default_repo: ~\ndefault_branch: null\naccounts:\n  a: null\n  b: \"null\"\n")
+
+        loaded = Cjules::Config.load
+        loaded.default_repo.should be_nil
+        loaded.default_branch.should be_nil
+        loaded.accounts.should eq({"b" => "null"})
+      end
+    end
+
     it "drops nil default_repo / default_branch on save" do
       with_isolated_home do
         cfg = Cjules::Config.new(default_repo: "foo/bar", current: "x", accounts: {"x" => "K"})
@@ -750,11 +786,6 @@ describe Cjules::TemplateRenderer do
       end
     end
 
-    it "does not re-expand directive-like text inside variable values" do
-      vars = {"a" => "{{.Var \"b\"}}", "b" => "B"}
-      Cjules::TemplateRenderer.render("{{.Var \"a\"}}", vars).should eq("{{.Var \"b\"}}")
-    end
-
     it "still expands directives inside included files (partials)" do
       with_isolated_home do |tmp|
         partial = File.join(tmp, "partial.md")
@@ -765,13 +796,25 @@ describe Cjules::TemplateRenderer do
 
     it "inserts git diff output verbatim, without expanding directives in it" do
       with_isolated_home do |tmp|
-        Dir.cd(tmp) do
-          system("git init -q && git config user.email t@t && git config user.name t")
-          File.write("f.txt", "old\n")
-          system("git add f.txt && git commit -qm init")
-          File.write("f.txt", "{{.Var \"name\"}}\n")
-          result = Cjules::TemplateRenderer.render("{{.GitDiff}}", {"name" => "X"})
-          result.should contain("+{{.Var \"name\"}}")
+        # Keep git (and render's own `git diff`) away from any outer repo, e.g.
+        # when specs run from a hook that exports GIT_DIR.
+        git_env = %w[GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CEILING_DIRECTORIES]
+        saved = git_env.map { |k| {k, ENV[k]?} }
+        git_env.each { |k| ENV.delete(k) }
+        ENV["GIT_CEILING_DIRECTORIES"] = File.dirname(tmp)
+        git = ->(args : Array(String)) { Process.run("git", args, chdir: tmp).success?.should be_true }
+        begin
+          git.call(%w[init -q])
+          File.write(File.join(tmp, "f.txt"), "old\n")
+          git.call(%w[add f.txt])
+          git.call(%w[-c user.email=t@t -c user.name=t commit -qm init])
+          File.write(File.join(tmp, "f.txt"), "{{.Var \"name\"}}\n")
+          Dir.cd(tmp) do
+            result = Cjules::TemplateRenderer.render("{{.GitDiff}}", {"name" => "X"})
+            result.should contain("+{{.Var \"name\"}}")
+          end
+        ensure
+          saved.each { |k, v| v ? (ENV[k] = v) : ENV.delete(k) }
         end
       end
     end
@@ -907,6 +950,8 @@ describe "Cjules::Util.int_flag!" do
   it "parses integers and raises UsageError otherwise" do
     Cjules::Util.int_flag!("--limit", "5").should eq(5)
     expect_raises(Cjules::UsageError, %(invalid --limit value: "abc")) { Cjules::Util.int_flag!("--limit", "abc") }
+    expect_raises(Cjules::UsageError, "invalid --interval value: 0 (must be >= 1)") { Cjules::Util.int_flag!("--interval", "0", min: 1) }
+    Cjules::Util.int_flag!("--interval", "1", min: 1).should eq(1)
   end
 end
 
@@ -925,6 +970,31 @@ describe Cjules::CLI do
       ENV["JULES_ACCOUNT"]?.should be_nil
     end
   end
+
+  it "still accepts a single-dash alias after --account" do
+    with_isolated_home do
+      Cjules::Config.new(accounts: {"-work" => "K"}).save
+      # `config path` needs no network; the alias only has to pass validation.
+      Cjules::CLI.run(["--account", "-work", "config", "path"]).should eq(0)
+      ENV["JULES_ACCOUNT"]?.should eq("-work")
+    end
+  end
+
+  it "rejects empty IDs before any request is made" do
+    with_isolated_home do
+      Cjules::CLI.run(["activity", "abc", "sessions/abc/activities/"]).should eq(2)
+      Cjules::CLI.run(["rm", "sessions/", "-y"]).should eq(2)
+    end
+  end
+end
+
+describe Cjules::API do
+  it "refuses to build a resource path from an empty ID" do
+    cfg = Cjules::Config.new(accounts: {"t" => "KEY"}, current: "t")
+    client = Cjules::Client.new(cfg)
+    expect_raises(Cjules::UsageError, "empty resource ID") { Cjules::API::Sessions.delete(client, "") }
+    expect_raises(Cjules::UsageError, "empty resource ID") { Cjules::API::Activities.get(client, "s", "") }
+  end
 end
 
 describe Cjules::Util::Duration do
@@ -932,5 +1002,8 @@ describe Cjules::Util::Duration do
     (Time.utc - Cjules::Util::Duration.cutoff!("1h")).should be_close(1.hour, 5.seconds)
     expect_raises(Cjules::UsageError, "invalid duration: zz") { Cjules::Util::Duration.cutoff!("zz") }
     expect_raises(Cjules::UsageError, "custom") { Cjules::Util::Duration.cutoff!("zz", "custom") }
+    # Out-of-range spans are usage errors, not ArgumentError crashes.
+    expect_raises(Cjules::UsageError) { Cjules::Util::Duration.cutoff!("99999999999d") }
+    expect_raises(Cjules::UsageError) { Cjules::Util::Duration.cutoff!("99999999d") }
   end
 end

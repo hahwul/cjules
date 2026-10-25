@@ -48,13 +48,13 @@ module Cjules
             Util::SessionFilter.matches?(sess,
               state: state, repo: repo_filter, older_than: cutoff)
           end
-          ids = matched.compact_map { |s| s.id || s.name.try(&.split("/").last) }
+          ids = matched.compact_map { |s| s.id.presence || s.name.try(&.split("/").last.presence) }
         else
           if positional.empty?
             STDERR.puts "error: provide session IDs or a --state/--older-than/--repo filter"
             return 2
           end
-          ids = positional.map { |i| Util::ID.require!([i]) }
+          ids = positional.map { |i| Util::ID.normalize(i).presence || raise Cjules::UsageError.new("empty session ID: #{i.inspect}") }
         end
 
         if ids.empty?

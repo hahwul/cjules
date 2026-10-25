@@ -6,8 +6,12 @@ module Cjules
   module Util
     # Parse an integer flag value, raising UsageError (exit 2) instead of
     # letting String#to_i's ArgumentError escape as an unhandled exception.
-    def self.int_flag!(flag : String, value : String) : Int32
-      value.to_i? || raise Cjules::UsageError.new("invalid #{flag} value: #{value.inspect} (expected an integer)")
+    def self.int_flag!(flag : String, value : String, min : Int32? = nil) : Int32
+      n = value.to_i? || raise Cjules::UsageError.new("invalid #{flag} value: #{value.inspect} (expected an integer)")
+      if min && n < min
+        raise Cjules::UsageError.new("invalid #{flag} value: #{n} (must be >= #{min})")
+      end
+      n
     end
 
     module SessionFilter
@@ -75,7 +79,7 @@ module Cjules
       # Parse strings like "30s", "5m", "2h", "7d", "1w".
       def parse(s : String) : Time::Span?
         if m = s.strip.match(/^(\d+)\s*([smhdw])$/i)
-          n = m[1].to_i
+          n = m[1].to_i? || return
           case m[2].downcase
           when "s" then n.seconds
           when "m" then n.minutes
@@ -89,6 +93,8 @@ module Cjules
       # `Time.utc` minus the parsed span; raises UsageError with `error` when unparseable.
       def cutoff!(s : String, error : String = "invalid duration: #{s}") : Time
         Time.utc - (parse(s) || raise Cjules::UsageError.new(error))
+      rescue ArgumentError # span reaches before Time::MIN
+        raise Cjules::UsageError.new(error)
       end
 
       def humanize(span : Time::Span) : String

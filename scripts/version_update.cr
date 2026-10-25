@@ -95,9 +95,12 @@ success_count = 0
 total_count = 0
 
 found.each do |t, v|
-  next unless v
   total_count += 1
   print "  Updating #{t.path}... "
+  unless v
+    puts "fail (no version found)"
+    next
+  end
   begin
     File.write(t.path, t.write.call(File.read(t.path), new_version))
     puts "ok"

@@ -45,8 +45,8 @@ module Cjules
           inline = a != "--account"
           val = inline ? a["--account=".size..] : argv[i + 1]?
           # `--account --no-color` means the value is missing, not an alias
-          # named "--no-color"; use `--account=-name` for a dash-led alias.
-          if val.nil? || val.empty? || (!inline && val.starts_with?("-"))
+          # named "--no-color" (single-dash aliases like `-work` still work).
+          if val.nil? || val.empty? || (!inline && val.starts_with?("--"))
             STDERR.puts "error: --account requires a value"
             return 2
           end

@@ -26,7 +26,7 @@ module Cjules
           p.on("--repo OWNER/REPO", "Filter by repo") { |v| repo_filter = v }
           p.on("--since DURATION", "Only sessions newer than (e.g. 7d, 24h)") { |v| since = v }
           p.on("--search QUERY", "Substring match on prompt/title") { |v| search = v }
-          p.on("--limit N", "Max sessions to show (default 30)") { |v| limit = Util.int_flag!("--limit", v) }
+          p.on("--limit N", "Max sessions to show (default 30)") { |v| limit = Util.int_flag!("--limit", v, min: 1) }
           p.on("--all", "Fetch all pages, ignore --limit") { all = true }
           p.on("-f FMT", "--format=FMT", "Output format: table, json, yaml, jsonl") { |v| output = v }
           p.on("-o FMT", "--output=FMT", "alias for --format") { |v| output = v }
