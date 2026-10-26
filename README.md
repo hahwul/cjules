@@ -19,6 +19,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Watch** — `cjules watch <id>` tails activities; `--auto-approve --reply --notify desktop|slack|discord` for hands-free runs.
 - **Prune** — filter by state, age, repo, or `--all`; dry-run by default, `-y` to apply.
 - **Patch & PR** — `cjules patch <id> --apply` (or `-i` for interactive hunks) runs `git apply`; `cjules pr <id> --open` opens the PR.
+- **Git helpers** — `cjules commit-msg` generates a commit message from `git diff` (or a session); `cjules pr-describe <id> --copy` generates a Markdown PR description from the session's actions and patch.
 - **Logs** — `cjules logs <id> -f md` for a full report, `--bash` for shell transcripts, `--save-media` for artifacts.
 - **Pipe-friendly** — `-f table|json|jsonl|yaml` on every list command.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
@@ -137,6 +138,15 @@ cjules patch <session-id> --interactive  # select hunks (like `git add -p`)
 # Print or open the PR
 cjules pr <session-id>
 cjules pr <session-id> --open
+
+# Generate a Markdown PR description (and optionally copy to clipboard)
+cjules pr-describe <session-id>
+cjules pr-describe <session-id> --copy
+
+# Generate a commit message from local git diff or from a session's patch
+cjules commit-msg
+cjules commit-msg --staged --copy
+cjules commit-msg <session-id> --copy
 
 # Full session report as Markdown
 cjules logs <session-id> -f md > report.md

@@ -39,6 +39,8 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 | `cjules logs <ID> [-f md\|json\|text]` | Export the full activity log. Markdown is the default and the most useful format for a human report. |
 | `cjules patch <ID> [--list\|--apply\|--interactive\|--index N]` | Print, list, `git apply`, or interactively apply the session's gitPatch artifacts. |
 | `cjules pr <ID> [--open]` | Print (or open) the pull-request URL produced by the session. |
+| `cjules pr-describe <ID> [--copy]` | Generate a Markdown pull-request description from the session's actions and output patch (`--copy` copies to clipboard). |
+| `cjules commit-msg [<ID>] [--staged] [--copy]` | Generate a commit message template from local `git diff` via Jules, or extract it from an existing session. |
 | `cjules pick` | Interactive session picker (uses `fzf` if installed) with `--action show\|watch\|pr\|delete`. |
 | `cjules retry <ID>` | Re-run a session by cloning prompt, repo, and branch; `--with-failure-reason` appends error notes. |
 | `cjules templates [ls\|show\|path]` | Manage prompt templates in `~/.config/cjules/templates/` with dynamic variable expansion. |
