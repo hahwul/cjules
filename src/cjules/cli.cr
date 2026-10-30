@@ -21,6 +21,7 @@ require "./commands/commit_msg"
 require "./commands/prune"
 require "./commands/pick"
 require "./commands/retry"
+require "./commands/troubleshoot"
 require "./commands/sources"
 require "./commands/templates"
 require "./commands/config"
@@ -92,6 +93,7 @@ module Cjules
         when "commit-msg"          then Commands::CommitMsg.run(argv)
         when "pick"                then Commands::Pick.run(argv)
         when "retry"               then Commands::Retry.run(argv)
+        when "troubleshoot"        then Commands::Troubleshoot.run(argv)
         when "sources"             then Commands::Sources.run(argv)
         when "templates", "tpl"    then Commands::Templates.run(argv)
         when "config"              then Commands::ConfigCmd.run(argv)
@@ -148,6 +150,7 @@ module Cjules
           commit-msg [<ID>]   Generate a commit message from git diff or a session
           pick                Interactive picker (uses fzf if installed)
           retry <ID>          Re-run a session by cloning its prompt/repo/branch
+          troubleshoot <ID>   Diagnose a failed session and retry with a fix note
 
         SOURCES:
           sources ls

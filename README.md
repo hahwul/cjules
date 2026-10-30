@@ -24,7 +24,7 @@ A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 - **Pipe-friendly** — `-f table|json|jsonl|yaml` on every list command.
 - **Multi-account** — aliases via `cjules accounts use`, or one-shot with `--account`.
 - **Pick** — `cjules pick` (uses `fzf` if available) with `--action show|watch|pr|delete`.
-- **Retry** — `cjules retry <id>` re-runs a session by cloning its prompt, repo, branch, and flags; `--with-failure-reason` carries the original failure message into the new prompt.
+- **Retry** — `cjules retry <id>` re-runs a session by cloning its prompt, repo, branch, and flags; `--with-failure-reason` carries the original failure message into the new prompt; `cjules troubleshoot <id>` diagnoses compile errors, missing shards, and failing specs from the logs and offers a retry with a fix note.
 - **Templates** — drop reusable prompts into `~/.config/cjules/templates/` and reference them via `--template <name>` on `new` or `retry`. Templates support dynamic variables: `{{.File "path"}}`, `{{.GitDiff}}`, and `{{.Var "name"}}` for powerful prompt generation.
 
 > **Heads up:** the Jules API is currently labelled `v1alpha`. Schema and
@@ -179,6 +179,11 @@ cjules retry <session-id> --branch experimental-fix
 
 # Pick the most-recent failure and retry it in one line
 cjules ls --state FAILED --limit 1 -f jsonl | jq -r .id | xargs cjules retry --with-failure-reason
+
+# Diagnose a failure from its bash logs and retry with a suggested fix note
+cjules troubleshoot <session-id>          # asks [Y/n] before retrying
+cjules troubleshoot <session-id> --dry-run
+cjules troubleshoot <session-id> --yes
 ```
 
 ### Reusable prompts with `templates`

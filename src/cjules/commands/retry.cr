@@ -75,7 +75,7 @@ module Cjules
         end
 
         if with_failure_reason
-          if reason = fetch_failure_reason(client, sid)
+          if reason = failure_reason(API::Activities.list_all(client, sid))
             prompt = "#{prompt}\n\nPrevious attempt failed: #{reason}" unless reason.empty?
           end
         end
@@ -103,8 +103,7 @@ module Cjules
         0
       end
 
-      private def fetch_failure_reason(client : Client, sid : String) : String?
-        activities = API::Activities.list_all(client, sid)
+      def failure_reason(activities : Array(Models::Activity)) : String?
         activities.reverse_each do |a|
           if sf = a.sessionFailed
             return sf.reason

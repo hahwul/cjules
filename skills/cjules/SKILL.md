@@ -43,6 +43,7 @@ If no account exists: `cjules login --alias <name>` (prompts for the key with hi
 | `cjules commit-msg [<ID>] [--staged] [--copy]` | Generate a commit message template from local `git diff` via Jules, or extract it from an existing session. |
 | `cjules pick` | Interactive session picker (uses `fzf` if installed) with `--action show\|watch\|pr\|delete`. |
 | `cjules retry <ID>` | Re-run a session by cloning prompt, repo, and branch; `--with-failure-reason` appends error notes. |
+| `cjules troubleshoot <ID> [-y] [-n]` | Diagnose a failed session (compile errors, missing shards, failing specs) and retry with a suggested `--note`. |
 | `cjules templates [ls\|show\|path]` | Manage prompt templates in `~/.config/cjules/templates/` with dynamic variable expansion. |
 | `cjules rm <ID...>` or `cjules rm --state X --older-than Y --repo R` | Delete sessions individually or in bulk. Confirmation unless `-y`. |
 | `cjules prune` | Bulk delete with dry-run table preview (`--completed`, `--failed`, `--older-than`, `--repo`, `--all`). `-y` to apply. |
@@ -118,6 +119,7 @@ echo "please also update the README" | cjules msg <id> -
 cjules retry <id>                               # clone context into new session
 cjules retry <id> --with-failure-reason         # feed previous failure back into prompt
 cjules retry <id> --note "Fix the compile error" # append targeted guidance
+cjules troubleshoot <id>                        # diagnose logs, suggest a note, retry on [Y/n]
 ```
 
 **Reusable prompt templates**

@@ -20,7 +20,7 @@ module Cjules
         _cjules() {
           local cur prev cmds
           cur="${COMP_WORDS[COMP_CWORD]}"
-          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pr-describe commit-msg pick retry sources templates config login logout accounts completion version help"
+          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pr-describe commit-msg pick retry troubleshoot sources templates config login logout accounts completion version help"
           if [[ $COMP_CWORD -eq 1 ]]; then
             COMPREPLY=( $(compgen -W "$cmds" -- "$cur") )
           fi
@@ -50,6 +50,7 @@ module Cjules
             'commit-msg:Generate a commit message from git diff or session'
             'pick:Interactive picker'
             'retry:Re-run a session'
+            'troubleshoot:Diagnose a failed session and retry'
             'sources:Manage sources'
             'templates:Manage prompt templates'
             'config:Show or set config'
@@ -87,6 +88,7 @@ module Cjules
         complete -c cjules -n "__fish_use_subcommand" -a "commit-msg" -d "Generate a commit message"
         complete -c cjules -n "__fish_use_subcommand" -a "pick"     -d "Interactive picker"
         complete -c cjules -n "__fish_use_subcommand" -a "retry"    -d "Re-run a session"
+        complete -c cjules -n "__fish_use_subcommand" -a "troubleshoot" -d "Diagnose a failed session and retry"
         complete -c cjules -n "__fish_use_subcommand" -a "sources"  -d "Manage sources"
         complete -c cjules -n "__fish_use_subcommand" -a "templates" -d "Manage prompt templates"
         complete -c cjules -n "__fish_use_subcommand" -a "config"   -d "Show or set config"
