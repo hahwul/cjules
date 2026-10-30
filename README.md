@@ -12,6 +12,15 @@
 <img src="https://img.shields.io/badge/Crystal-000000?style=for-the-badge&logo=crystal&logoColor=white"></a>
 </p>
 
+> [!WARNING]
+> **Jules is shutting down, so cjules is no longer maintained.** Google
+> [announced](https://jules.google/docs/changelog/2026-10-29) that Jules
+> becomes read-only after **November 11, 2026** and shuts down on
+> **December 31, 2026**. v0.3.0 is the final release of cjules. The repository
+> will be archived after that. Your code, branches, and PRs stay on GitHub. To
+> keep session history, use the official export from the announcement before
+> the service goes away.
+
 A scriptable CLI for [Jules](https://jules.google), written in Crystal.
 
 - **Git-aware `new`** — auto-detects `--repo` and `--branch`; reads the prompt from args, `stdin`, or `--file`.
