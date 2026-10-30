@@ -8,7 +8,10 @@ require "../src/cjules/config"
 require "../src/cjules/commands/new"
 require "../src/cjules/commands/watch"
 require "../src/cjules/commands/config"
+require "../src/cjules/commands/commit_msg"
+require "../src/cjules/commands/pr_describe"
 require "../src/cjules/notifier"
+require "../src/cjules/unidiff"
 require "../src/cjules/template_renderer"
 require "file_utils"
 
@@ -1218,5 +1221,345 @@ describe Cjules::Util::Duration do
     # Out-of-range spans are usage errors, not ArgumentError crashes.
     expect_raises(Cjules::UsageError) { Cjules::Util::Duration.cutoff!("99999999999d") }
     expect_raises(Cjules::UsageError) { Cjules::Util::Duration.cutoff!("99999999d") }
+  end
+end
+
+describe Cjules::Util::Clipboard do
+  it "copies text to the detected clipboard binary via stdin without shell interpolation" do
+    with_isolated_home do |tmp|
+      bin_dir = File.join(tmp, "bin")
+      Dir.mkdir_p(bin_dir)
+      out_file = File.join(tmp, "clip-out.txt")
+      script = File.join(bin_dir, "pbcopy")
+      File.write(script, "#!/bin/sh\ncat > \"#{out_file}\"\n")
+      File.chmod(script, 0o755)
+
+      old_path = ENV["PATH"]?
+      ENV["PATH"] = "#{bin_dir}:/bin:/usr/bin"
+      begin
+        payload = "## Summary\n\nFix `quote` & $(uname) \"tricky\" lines\n"
+        Cjules::Util::Clipboard.copy(payload).should be_true
+        File.read(out_file).should eq(payload)
+      ensure
+        old_path ? (ENV["PATH"] = old_path) : ENV.delete("PATH")
+      end
+    end
+  end
+
+  it "returns false when no clipboard binary is on PATH" do
+    old_path = ENV["PATH"]?
+    ENV["PATH"] = "/nonexistent-dir"
+    begin
+      Cjules::Util::Clipboard.copy("test").should be_false
+    ensure
+      old_path ? (ENV["PATH"] = old_path) : ENV.delete("PATH")
+    end
+  end
+
+  it "falls back to the next clipboard candidate when an earlier candidate fails" do
+    with_isolated_home do |tmp|
+      bin_dir = File.join(tmp, "bin")
+      Dir.mkdir_p(bin_dir)
+      out_file = File.join(tmp, "clip-fallback.txt")
+
+      bad_pbcopy = File.join(bin_dir, "pbcopy")
+      File.write(bad_pbcopy, "#!/bin/sh\nexit 1\n")
+      File.chmod(bad_pbcopy, 0o755)
+
+      good_wl = File.join(bin_dir, "wl-copy")
+      File.write(good_wl, "#!/bin/sh\ncat > \"#{out_file}\"\n")
+      File.chmod(good_wl, 0o755)
+
+      old_path = ENV["PATH"]?
+      ENV["PATH"] = "#{bin_dir}:/bin:/usr/bin"
+      begin
+        Cjules::Util::Clipboard.copy("fallback ok").should be_true
+        File.read(out_file).should eq("fallback ok")
+      ensure
+        old_path ? (ENV["PATH"] = old_path) : ENV.delete("PATH")
+      end
+    end
+  end
+end
+
+describe "Cjules::Unidiff.file_stats" do
+  it "counts added ++ and deleted -- content lines inside hunks accurately" do
+    diff = <<-DIFF
+      diff --git a/doc.md b/doc.md
+      --- a/doc.md
+      +++ b/doc.md
+      @@ -1,3 +1,3 @@
+      ----
+      -title: old
+      ----
+      +---
+      +title: new
+      +++extra
+      DIFF
+    stats = Cjules::Unidiff.file_stats(diff)
+    stats.size.should eq(1)
+    stats[0].path.should eq("doc.md")
+    stats[0].additions.should eq(3)
+    stats[0].deletions.should eq(3)
+  end
+end
+
+describe Cjules::Commands::PRDescribe do
+  it "formats a Markdown PR description from session actions and gitPatch" do
+    sess = Cjules::Models::Session.from_json(%({
+      "id": "s42",
+      "title": "Add retry backoff jitter",
+      "prompt": "Add jitter to HTTP retry backoff in client.cr"
+    }))
+    activities = [
+      Cjules::Models::Activity.from_json(%({
+        "id": "a1",
+        "planGenerated": {
+          "plan": {
+            "id": "p1",
+            "steps": [
+              {"index": 0, "title": "Update backoff calculation", "description": "Add random jitter to sleep span"},
+              {"index": 1, "title": "Add unit specs"}
+            ]
+          }
+        }
+      })),
+      Cjules::Models::Activity.from_json(%({
+        "id": "a2",
+        "artifacts": [
+          {
+            "changeSet": {
+              "gitPatch": {
+                "baseCommitId": "1234567890abcdef",
+                "suggestedCommitMessage": "feat(client): add jitter to retry backoff\\n\\nPrevent thundering herd on 429/5xx.",
+                "unidiffPatch": "diff --git a/src/cjules/client.cr b/src/cjules/client.cr\\nindex 111..222 100644\\n--- a/src/cjules/client.cr\\n+++ b/src/cjules/client.cr\\n@@ -10,2 +10,3 @@\\n-  sleep 1.second\\n+  sleep 1.second\\n+  sleep 50.milliseconds\\ndiff --git a/spec/cjules_spec.cr b/spec/cjules_spec.cr\\n--- a/spec/cjules_spec.cr\\n+++ b/spec/cjules_spec.cr\\n@@ -1,1 +1,4 @@\\n+it \\"tests jitter\\" do\\n+  true.should be_true\\n+end\\n"
+              }
+            }
+          },
+          {
+            "bashOutput": {
+              "command": "crystal spec",
+              "output": "10 examples, 0 failures",
+              "exitCode": 0
+            }
+          }
+        ]
+      })),
+    ]
+
+    md = Cjules::Commands::PRDescribe.format_markdown(sess, activities)
+    md.should contain("## Summary")
+    md.should contain("feat(client): add jitter to retry backoff")
+    md.should contain("## Changes")
+    md.should contain("Update backoff calculation")
+    md.should contain("Add unit specs")
+    md.should contain("## Files Changed")
+    md.should contain("`src/cjules/client.cr` (+2/-1)")
+    md.should contain("`spec/cjules_spec.cr` (+3/-0)")
+    md.should contain("## Verification")
+    md.should contain("`crystal spec` (exit 0)")
+  end
+
+  it "uses pullRequest description and progressUpdated when no plan or patch exists" do
+    sess = Cjules::Models::Session.from_json(%({
+      "id": "s43",
+      "title": "Docs update",
+      "outputs": [{"pullRequest": {"title": "docs: update guide", "description": "Updated CLI usage guide."}}]
+    }))
+    activities = [
+      Cjules::Models::Activity.from_json(%({"id": "a1", "progressUpdated": {"title": "Edit README", "description": "Added examples"}})),
+    ]
+    md = Cjules::Commands::PRDescribe.format_markdown(sess, activities)
+    md.should contain("Updated CLI usage guide.")
+    md.should contain("**Edit README** — Added examples")
+    md.should_not contain("## Files Changed")
+    md.should_not contain("## Verification")
+  end
+
+  it "fetches session and copies PR description when --copy is passed" do
+    with_isolated_home do |tmp|
+      with_webmock do
+        cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+        cfg.save
+
+        stub_jules(:get, "/v1alpha/sessions/s42", body: %({"id":"s42","title":"Fix parser","prompt":"Fix parser bug"}))
+        stub_jules(:get, "/v1alpha/sessions/s42/activities?pageSize=100", body: %({
+          "activities": [{
+            "id": "a1",
+            "artifacts": [{
+              "changeSet": {
+                "gitPatch": {
+                  "suggestedCommitMessage": "fix: handle empty input in parser",
+                  "unidiffPatch": "diff --git a/src/parser.cr b/src/parser.cr\\n--- a/src/parser.cr\\n+++ b/src/parser.cr\\n@@ -1,1 +1,2 @@\\n+return if input.empty?\\n"
+                }
+              }
+            }]
+          }]
+        }))
+
+        bin_dir = File.join(tmp, "bin")
+        Dir.mkdir_p(bin_dir)
+        clip_file = File.join(tmp, "copied.md")
+        script = File.join(bin_dir, "pbcopy")
+        File.write(script, "#!/bin/sh\ncat > \"#{clip_file}\"\n")
+        File.chmod(script, 0o755)
+
+        old_path = ENV["PATH"]?
+        ENV["PATH"] = "#{bin_dir}:/bin:/usr/bin"
+        begin
+          rc = Cjules::Commands::PRDescribe.run(["s42", "--copy"])
+          rc.should eq(0)
+          copied = File.read(clip_file)
+          copied.should contain("## Summary")
+          copied.should contain("fix: handle empty input in parser")
+          copied.should contain("`src/parser.cr` (+1/-0)")
+        ensure
+          old_path ? (ENV["PATH"] = old_path) : ENV.delete("PATH")
+        end
+      end
+    end
+  end
+
+  it "rejects missing or empty session IDs with exit code 2" do
+    with_isolated_home do
+      Cjules::CLI.run(["pr-describe"]).should eq(2)
+      Cjules::CLI.run(["pr-describe", "sessions/"]).should eq(2)
+    end
+  end
+end
+
+describe Cjules::Commands::CommitMsg do
+  it "extracts suggestedCommitMessage from a session when an ID is passed" do
+    with_isolated_home do |tmp|
+      with_webmock do
+        cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+        cfg.save
+
+        stub_jules(:get, "/v1alpha/sessions/s77/activities?pageSize=100", body: %({
+          "activities": [{
+            "id": "a1",
+            "artifacts": [{
+              "changeSet": {
+                "gitPatch": {
+                  "suggestedCommitMessage": "refactor(cli): simplify flag dispatch\\n\\n- Merge duplicate branches"
+                }
+              }
+            }]
+          }]
+        }))
+
+        bin_dir = File.join(tmp, "bin")
+        Dir.mkdir_p(bin_dir)
+        clip_file = File.join(tmp, "commit-clip.txt")
+        script = File.join(bin_dir, "pbcopy")
+        File.write(script, "#!/bin/sh\ncat > \"#{clip_file}\"\n")
+        File.chmod(script, 0o755)
+
+        old_path = ENV["PATH"]?
+        ENV["PATH"] = "#{bin_dir}:/bin:/usr/bin"
+        begin
+          rc = Cjules::Commands::CommitMsg.run(["s77", "--copy"])
+          rc.should eq(0)
+          File.read(clip_file).strip.should eq("refactor(cli): simplify flag dispatch\n\n- Merge duplicate branches")
+        ensure
+          old_path ? (ENV["PATH"] = old_path) : ENV.delete("PATH")
+        end
+      end
+    end
+  end
+
+  it "returns 1 when a session has no gitPatch or agentMessaged commit message" do
+    with_isolated_home do
+      with_webmock do
+        cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+        cfg.save
+
+        stub_jules(:get, "/v1alpha/sessions/s_empty/activities?pageSize=100", body: %({"activities":[]}))
+        Cjules::Commands::CommitMsg.run(["s_empty"]).should eq(1)
+      end
+    end
+  end
+
+  it "rejects empty session IDs or combining session ID with --staged (exit 2)" do
+    with_isolated_home do
+      Cjules::CLI.run(["commit-msg", "sessions/"]).should eq(2)
+      Cjules::CLI.run(["commit-msg", "s77", "--staged"]).should eq(2)
+    end
+  end
+
+  it "sends local git diff to Jules and prints the generated commit message" do
+    with_isolated_home do |tmp|
+      with_webmock do
+        cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+        cfg.save
+
+        git_env = %w[GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CEILING_DIRECTORIES]
+        saved = git_env.map { |k| {k, ENV[k]?} }
+        git_env.each { |k| ENV.delete(k) }
+        ENV["GIT_CEILING_DIRECTORIES"] = File.dirname(tmp)
+        git = ->(args : Array(String)) { Process.run("git", args, chdir: tmp).success?.should be_true }
+
+        submitted_prompt = ""
+        WebMock.stub(:post, "https://jules.googleapis.com/v1alpha/sessions").to_return do |req|
+          body = req.body.try(&.gets_to_end) || ""
+          submitted_prompt = JSON.parse(body)["prompt"].as_s
+          HTTP::Client::Response.new(200, body: %({"id":"gen1","state":"COMPLETED"}), headers: HTTP::Headers{"Content-Type" => "application/json"})
+        end
+        stub_jules(:get, "/v1alpha/sessions/gen1", body: %({"id":"gen1","state":"COMPLETED"}))
+        stub_jules(:get, "/v1alpha/sessions/gen1/activities?pageSize=100", body: %({
+          "activities": [{
+            "id": "a1",
+            "agentMessaged": {
+              "agentMessage": "```\\nfeat(hello): greet the world\\n\\n- Add greeting line to hello.txt\\n```"
+            }
+          }]
+        }))
+
+        begin
+          git.call(%w[init -q])
+          File.write(File.join(tmp, "hello.txt"), "hello\n")
+          git.call(%w[add hello.txt])
+          git.call(%w[-c user.email=t@t -c user.name=t commit -qm init])
+          File.write(File.join(tmp, "hello.txt"), "hello world\n")
+
+          Dir.cd(tmp) do
+            rc = Cjules::Commands::CommitMsg.run(["--interval", "1"])
+            rc.should eq(0)
+            submitted_prompt.should contain("+hello world")
+          end
+        ensure
+          saved.each { |k, v| v ? (ENV[k] = v) : ENV.delete(k) }
+        end
+      end
+    end
+  end
+
+  it "returns exit code 1 when there are no local git changes" do
+    with_isolated_home do |tmp|
+      cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+      cfg.save
+
+      git_env = %w[GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CEILING_DIRECTORIES]
+      saved = git_env.map { |k| {k, ENV[k]?} }
+      git_env.each { |k| ENV.delete(k) }
+      ENV["GIT_CEILING_DIRECTORIES"] = File.dirname(tmp)
+      git = ->(args : Array(String)) { Process.run("git", args, chdir: tmp).success?.should be_true }
+
+      begin
+        git.call(%w[init -q])
+        File.write(File.join(tmp, "hello.txt"), "hello\n")
+        git.call(%w[add hello.txt])
+        git.call(%w[-c user.email=t@t -c user.name=t commit -qm init])
+
+        Dir.cd(tmp) do
+          Cjules::Commands::CommitMsg.run([] of String).should eq(1)
+          File.write(File.join(tmp, "hello.txt"), "unstaged change\n")
+          # --staged should ignore unstaged changes and return 1
+          Cjules::Commands::CommitMsg.run(["--staged"]).should eq(1)
+        end
+      ensure
+        saved.each { |k, v| v ? (ENV[k] = v) : ENV.delete(k) }
+      end
+    end
   end
 end

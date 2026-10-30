@@ -16,6 +16,8 @@ require "./commands/activity"
 require "./commands/patch"
 require "./commands/plan"
 require "./commands/pr"
+require "./commands/pr_describe"
+require "./commands/commit_msg"
 require "./commands/prune"
 require "./commands/pick"
 require "./commands/retry"
@@ -86,6 +88,8 @@ module Cjules
         when "patch", "diff"       then Commands::Patch.run(argv)
         when "plan"                then Commands::Plan.run(argv)
         when "pr"                  then Commands::PR.run(argv)
+        when "pr-describe"         then Commands::PRDescribe.run(argv)
+        when "commit-msg"          then Commands::CommitMsg.run(argv)
         when "pick"                then Commands::Pick.run(argv)
         when "retry"               then Commands::Retry.run(argv)
         when "sources"             then Commands::Sources.run(argv)
@@ -140,6 +144,8 @@ module Cjules
           activity <SID> <AID> Show a single activity
           patch <ID>          Print, list, apply, or interactively apply gitPatch artifacts
           pr <ID>             Print PR URL (--open to launch browser)
+          pr-describe <ID>    Generate a Markdown PR description (--copy for clipboard)
+          commit-msg [<ID>]   Generate a commit message from git diff or a session
           pick                Interactive picker (uses fzf if installed)
           retry <ID>          Re-run a session by cloning its prompt/repo/branch
 

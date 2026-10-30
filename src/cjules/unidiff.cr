@@ -7,6 +7,33 @@ module Cjules
     extend self
 
     record Chunk, label : String, lines : Array(String)
+    record FileStat, path : String, additions : Int32, deletions : Int32
+
+    # Per-file line addition/deletion counts from a unified diff.
+    def file_stats(text : String) : Array(FileStat)
+      return [] of FileStat if text.strip.empty?
+      raw_lines = text.lines.map(&.chomp)
+      split_sections(raw_lines).compact_map do |section|
+        next if section.empty?
+        in_hunk = false
+        add = 0
+        del = 0
+        section.each do |l|
+          if l.starts_with?("@@")
+            in_hunk = true
+          elsif in_hunk
+            if l.starts_with?("+")
+              add += 1
+            elsif l.starts_with?("-")
+              del += 1
+            end
+          end
+        end
+        label = section_label(section)
+        next if label == "patch" && !in_hunk
+        FileStat.new(label, add, del)
+      end
+    end
 
     # Split a unidiff into independent chunks (usually hunks). Each returned chunk
     # includes the necessary file headers so it can be applied on its own.

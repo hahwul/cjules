@@ -123,6 +123,11 @@ module Cjules
         run("git", "rev-parse", "--abbrev-ref", "HEAD")
       end
 
+      def diff(staged : Bool = false) : String?
+        return run("git", "diff", "--cached") if staged
+        run("git", "diff") || run("git", "diff", "--cached")
+      end
+
       # Extract "owner/repo" from a git remote URL.
       def parse_repo(url : String) : String?
         if m = url.match(/github\.com[:\/]([^\/]+)\/([^\/\s]+?)(?:\.git)?\s*$/)
@@ -176,6 +181,42 @@ module Cjules
 
       def to_source(repo : String) : String
         "sources/github/#{repo}"
+      end
+    end
+
+    module Clipboard
+      extend self
+
+      CANDIDATES = [
+        {"pbcopy", [] of String},
+        {"wl-copy", [] of String},
+        {"xclip", ["-selection", "clipboard"]},
+        {"xsel", ["--clipboard", "--input"]},
+        {"clip.exe", [] of String},
+      ]
+
+      def copy(text : String) : Bool
+        CANDIDATES.each do |prog, args|
+          next unless Process.find_executable(prog)
+          begin
+            status = Process.run(prog, args,
+              input: IO::Memory.new(text),
+              output: Process::Redirect::Close,
+              error: Process::Redirect::Close)
+            return true if status.success?
+          rescue Exception
+            next
+          end
+        end
+        false
+      end
+
+      def copy_or_warn(text : String) : Nil
+        if copy(text)
+          STDERR.puts "copied to clipboard"
+        else
+          STDERR.puts "warning: failed to copy to clipboard (no clipboard tool found)"
+        end
       end
     end
   end

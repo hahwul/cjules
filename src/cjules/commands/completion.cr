@@ -20,7 +20,7 @@ module Cjules
         _cjules() {
           local cur prev cmds
           cur="${COMP_WORDS[COMP_CWORD]}"
-          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pick retry sources templates config login logout accounts completion version help"
+          cmds="new ls get rm prune watch msg approve plan logs activity patch pr pr-describe commit-msg pick retry sources templates config login logout accounts completion version help"
           if [[ $COMP_CWORD -eq 1 ]]; then
             COMPREPLY=( $(compgen -W "$cmds" -- "$cur") )
           fi
@@ -46,6 +46,8 @@ module Cjules
             'activity:Show a single activity'
             'patch:Print/apply gitPatch (supports -i)'
             'pr:Print PR URL'
+            'pr-describe:Generate a Markdown PR description'
+            'commit-msg:Generate a commit message from git diff or session'
             'pick:Interactive picker'
             'retry:Re-run a session'
             'sources:Manage sources'
@@ -81,6 +83,8 @@ module Cjules
         complete -c cjules -n "__fish_use_subcommand" -a "activity" -d "Show a single activity"
         complete -c cjules -n "__fish_use_subcommand" -a "patch"    -d "Print/apply gitPatch (supports -i)"
         complete -c cjules -n "__fish_use_subcommand" -a "pr"       -d "Print PR URL"
+        complete -c cjules -n "__fish_use_subcommand" -a "pr-describe" -d "Generate a Markdown PR description"
+        complete -c cjules -n "__fish_use_subcommand" -a "commit-msg" -d "Generate a commit message"
         complete -c cjules -n "__fish_use_subcommand" -a "pick"     -d "Interactive picker"
         complete -c cjules -n "__fish_use_subcommand" -a "retry"    -d "Re-run a session"
         complete -c cjules -n "__fish_use_subcommand" -a "sources"  -d "Manage sources"
