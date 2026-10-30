@@ -10,6 +10,7 @@ require "../src/cjules/commands/watch"
 require "../src/cjules/commands/config"
 require "../src/cjules/commands/commit_msg"
 require "../src/cjules/commands/pr_describe"
+require "../src/cjules/commands/troubleshoot"
 require "../src/cjules/notifier"
 require "../src/cjules/unidiff"
 require "../src/cjules/template_renderer"
@@ -1559,6 +1560,78 @@ describe Cjules::Commands::CommitMsg do
         end
       ensure
         saved.each { |k, v| v ? (ENV[k] = v) : ENV.delete(k) }
+      end
+    end
+  end
+end
+
+describe Cjules::Commands::Troubleshoot do
+  bash = ->(cmd : String, code : Int32, out : String) {
+    Cjules::Models::Activity.from_json({"artifacts" => [{"bashOutput" => {"command" => cmd, "exitCode" => code, "output" => out}}]}.to_json)
+  }
+
+  it "parses crystal compile errors, missing shards and failing specs" do
+    compile = "Showing last frame.\nIn src/parser.cr:12:5\n\n 12 | foo\n      ^--\nError: undefined method 'foo' for Bar\n"
+    missing = "In src/app.cr:1:1\n\n 1 | require \"kemal\"\n     ^\nError: can't find file 'kemal'\n"
+    specs = "\e[31mFailed examples:\e[0m\n\n\e[31mcrystal spec spec/foo_spec.cr:10\e[0m\e[36m # Foo does bar\e[0m\n"
+    shards = "Resolving dependencies\nE: Failed to resolve dependencies\n"
+
+    f = Cjules::Commands::Troubleshoot.parse_output(compile).first
+    f.summary.should eq("src/parser.cr:12: undefined method 'foo' for Bar")
+    f.fix.should eq("Fix undefined method 'foo' for Bar at src/parser.cr:12")
+
+    Cjules::Commands::Troubleshoot.parse_output(missing).first.fix.should contain("missing shard 'kemal'")
+    Cjules::Commands::Troubleshoot.parse_output("Error: can't find file 'db/pool'").first.fix.should contain("missing shard 'db/pool'")
+    Cjules::Commands::Troubleshoot.parse_output(specs).first.summary.should eq("spec/foo_spec.cr:10: failing spec 'Foo does bar'")
+    Cjules::Commands::Troubleshoot.parse_output(shards).should be_empty
+    Cjules::Commands::Troubleshoot.parse_output(shards, "shards install").first.summary.should eq("shards: Failed to resolve dependencies")
+  end
+
+  it "ignores commands whose last run succeeded and falls back to the failure reason" do
+    acts = [
+      bash.call("crystal spec", 1, "crystal spec spec/a_spec.cr:3 # A works\n"),
+      bash.call("crystal spec", 0, "1 examples, 0 failures\n"),
+      Cjules::Models::Activity.from_json(%({"sessionFailed": {"reason": "timeout"}})),
+    ]
+    f = Cjules::Commands::Troubleshoot.diagnose(acts)
+    f.map(&.summary).should eq(["timeout"])
+  end
+
+  it "summarizes an unrecognized failing command by its last output line" do
+    f = Cjules::Commands::Troubleshoot.diagnose([bash.call("make", 2, "building\nboom\n\n")])
+    f.first.summary.should eq("`make` exited 2: boom")
+  end
+
+  it "prints a diagnosis and retries with the suggested note on --yes" do
+    with_isolated_home do
+      with_webmock do
+        cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+        cfg.save
+        stub_jules(:get, "/v1alpha/sessions/f1", body: %({"id":"f1","state":"FAILED","prompt":"do it"}))
+        stub_jules(:get, "/v1alpha/sessions/f1/activities?pageSize=100", body: {
+          "activities" => [{"artifacts" => [{"bashOutput" => {"command" => "crystal build", "exitCode" => 1,
+                                                              "output" => "In src/x.cr:2:1\nError: undefined constant Y"}}]}],
+        }.to_json)
+        submitted = ""
+        WebMock.stub(:post, "https://jules.googleapis.com/v1alpha/sessions").to_return do |req|
+          submitted = JSON.parse(req.body.try(&.gets_to_end) || "")["prompt"].as_s
+          HTTP::Client::Response.new(200, body: %({"id":"f2","state":"QUEUED"}), headers: HTTP::Headers{"Content-Type" => "application/json"})
+        end
+
+        Cjules::Commands::Troubleshoot.run(["f1", "--yes"]).should eq(0)
+        submitted.should eq("do it\n\nFix undefined constant Y at src/x.cr:2")
+      end
+    end
+  end
+
+  it "returns 1 when nothing can be diagnosed" do
+    with_isolated_home do
+      with_webmock do
+        cfg = Cjules::Config.new(api_base: "https://jules.googleapis.com", accounts: {"t" => "KEY"}, current: "t")
+        cfg.save
+        stub_jules(:get, "/v1alpha/sessions/ok1", body: %({"id":"ok1","state":"COMPLETED"}))
+        stub_jules(:get, "/v1alpha/sessions/ok1/activities?pageSize=100", body: %({"activities":[]}))
+        Cjules::Commands::Troubleshoot.run(["ok1", "-n"]).should eq(1)
       end
     end
   end
